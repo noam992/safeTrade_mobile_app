@@ -1,7 +1,6 @@
 # SafeTrade
 
 ## Setup Instructions
-
 1. Clone the repository
 2. Add the credentials file based on your environment:
    - Path: `assets/credentials.json`
