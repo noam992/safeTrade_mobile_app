@@ -32,28 +32,107 @@ class HomeView extends GetView<HomeController> {
             },
             child: const Icon(Icons.add),
           ),
-          body: Column(
-            children: [
-              const SizedBox(height: 16),
-              getDateFilter(context: context),
-              const SizedBox(height: 16),
-              controller.isLoading.isTrue
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : controller.spreadsheetData.isNotEmpty
-                      ? Expanded(
-                        child: ListView.builder(
-                            itemCount: controller.spreadsheetData.length,
-                            itemBuilder: (context, index) {
-                              return recordItems(context, index);
-                            },
+          body: RefreshIndicator(
+            onRefresh: () async {
+              await controller.fetchSpreadsheetData();
+              await controller.fetchStockFormData();
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height - AppBar().preferredSize.height,
+                child: Column(
+                  children: [
+                    // First Section - Date Filters
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          getDateFilter(context: context),
+                          const SizedBox(height: 16),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              headingRowColor: MaterialStateProperty.all(
+                                AppColors.primaryColor.withOpacity(0.1),
+                              ),
+                              columns: const [
+                                DataColumn(label: Text('Date')),
+                                DataColumn(label: Text('Symbol')),
+                                DataColumn(label: Text('Shares')),
+                                DataColumn(label: Text('Buy Price')),
+                                DataColumn(label: Text('Current Price')),
+                                DataColumn(label: Text('Sell Date')),
+                                DataColumn(label: Text('Sell Price')),
+                              ],
+                              rows: controller.stockFormData.map((row) {
+                                // Skip header row if it exists
+                                if (row[0] == 'User Email') return const DataRow(cells: []);
+                                
+                                return DataRow(
+                                  cells: [
+                                    DataCell(Text(row[1].toString().split(' ')[0])), // Buy Date (only date part)
+                                    DataCell(Text(row[2].toString())), // Stock Symbol
+                                    DataCell(Text(row[4].toString())), // Shares
+                                    DataCell(Text(row[3].toString())), // Buy Price
+                                    DataCell(Text(row[6].toString())), // Current Price
+                                    DataCell(Text(row[7].toString().split(' ')[0])), // Sell Date (only date part)
+                                    DataCell(Text(row[8].toString())), // Sell Price
+                                  ],
+                                );
+                              }).where((row) => row.cells.isNotEmpty).toList(),
+                            ),
                           ),
-                      )
-                      : const Center(
-                          child: Text('No data found'),
+                        ],
+                      ),
+                    ),
+                    // Divider Line
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      height: 1,
+                      color: Colors.grey[300],
+                    ),
+                    // Second Section - Empty
+                    Container(
+                      height: MediaQuery.of(context).size.height * 0.2,
+                    ),
+                    // Third Section - Items List
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
                         ),
-            ],
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            controller.isLoading.isTrue
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : controller.spreadsheetData.isNotEmpty
+                                    ? Expanded(
+                                        child: ListView.builder(
+                                          itemCount: controller.spreadsheetData.length,
+                                          itemBuilder: (context, index) {
+                                            return recordItems(context, index);
+                                          },
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Text('No data found'),
+                                      ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
@@ -64,14 +143,27 @@ class HomeView extends GetView<HomeController> {
     return AppBar(
       backgroundColor: AppColors.primaryColor,
       surfaceTintColor: AppColors.primaryColor,
-      title: AppText(
-        text: 'Safe Trade',
-        color: AppColors.whiteColor,
+      title: Row(
+        children: [
+          AppText(
+            text: 'Safe Trade',
+            color: AppColors.whiteColor,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: AppText(
+              text: controller.getUserEmail() ?? '',
+              color: AppColors.whiteColor,
+              fontSize: 12,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
       iconTheme: IconThemeData(
         color: AppColors.whiteColor,
       ),
-      centerTitle: true,
       actions: [
         GestureDetector(
           onTap: () {
@@ -145,7 +237,13 @@ class HomeView extends GetView<HomeController> {
           children: [
             Row(
               children: [
-                const Text('Stock Data :'),
+                const Text(
+                  'Stock Data :',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
                 Text(row[1].toString()),
               ],
             ),
