@@ -11,6 +11,7 @@ import '../login/export.dart';
 
 class HomeController extends BaseController {
   List<List<dynamic>> spreadsheetData = [];
+  List<List<dynamic>> stockFormData = [];
   RxBool isLoading = true.obs;
 
   Rx<DateTime> fromDate=DateTime.now().obs;
@@ -19,6 +20,7 @@ class HomeController extends BaseController {
   @override
   void onInit() {
     fetchSpreadsheetData();
+    fetchStockFormData();
     super.onInit();
   }
 
@@ -46,6 +48,28 @@ class HomeController extends BaseController {
       debugPrint("Error fetching data: $e");
       isLoading.value = false;
       update();
+    }
+  }
+
+  fetchStockFormData() async {
+    try {
+      final client = await DriverConstants.authenticate();
+      final sheetsApi = sheets.SheetsApi(client);
+
+      final response = await sheetsApi.spreadsheets.values.get(
+        DriverConstants.stockFormSpreadsheetId,
+        DriverConstants.stockFormRange,
+      );
+
+      if (response.values != null) {
+        stockFormData = response.values!;
+        debugPrint("Stock Form Data: $stockFormData");
+        update();
+      } else {
+        debugPrint("No data received from spreadsheet");
+      }
+    } catch (e) {
+      debugPrint("Error fetching stock form data: $e");
     }
   }
 
@@ -161,5 +185,9 @@ class HomeController extends BaseController {
   void dispose() {
     // TODO: implement dispose
     super.dispose();
+  }
+
+  String? getUserEmail() {
+    return super.getUserEmail();
   }
 }

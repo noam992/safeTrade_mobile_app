@@ -32,13 +32,26 @@ mixin CacheManager {
   //   }
   // }
 
+  Future<bool> saveUserEmail(String email) async {
+    final storage = GetStorage();
+    await storage.write(CMEnums.userEmail.toString(), email);
+    return true;
+  }
+
+  String? getUserEmail() {
+    final storage = GetStorage();
+    return storage.read(CMEnums.userEmail.toString());
+  }
+
   Future<bool> removeAllData() async {
     final storage = GetStorage();
     await storage.remove(CMEnums.isLogin.toString());
+    await storage.remove(CMEnums.userEmail.toString());
     return true;
   }
 }
 
 enum CMEnums {
   isLogin,
+  userEmail,
 }

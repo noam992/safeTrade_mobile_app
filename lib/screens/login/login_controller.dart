@@ -57,6 +57,8 @@ class LoginController extends BaseController {
           client.close();
           isLoading.value = false;
           update();
+          await saveIsLogin(true);
+          await saveUserEmail(emailTEC.text);
           return true;
         }
       }
