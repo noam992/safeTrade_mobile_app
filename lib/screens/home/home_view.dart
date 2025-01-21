@@ -65,22 +65,26 @@ class HomeView extends GetView<HomeController> {
                                 DataColumn(label: Text('Sell Date')),
                                 DataColumn(label: Text('Sell Price')),
                               ],
-                              rows: controller.stockFormData.map((row) {
-                                // Skip header row if it exists
-                                if (row[0] == 'User Email') return const DataRow(cells: []);
-                                
-                                return DataRow(
-                                  cells: [
-                                    DataCell(Text(row[1].toString().split(' ')[0])), // Buy Date (only date part)
-                                    DataCell(Text(row[2].toString())), // Stock Symbol
-                                    DataCell(Text(row[4].toString())), // Shares
-                                    DataCell(Text(row[3].toString())), // Buy Price
-                                    DataCell(Text(row[6].toString())), // Current Price
-                                    DataCell(Text(row[7].toString().split(' ')[0])), // Sell Date (only date part)
-                                    DataCell(Text(row[8].toString())), // Sell Price
-                                  ],
-                                );
-                              }).where((row) => row.cells.isNotEmpty).toList(),
+                              rows: controller.stockFormData
+                                  .where((row) {
+                                    // Skip header row and filter by user email
+                                    if (row[0] == 'User Email') return false;
+                                    return row[0].toString() == controller.getUserEmail();
+                                  })
+                                  .map((row) {
+                                    return DataRow(
+                                      cells: [
+                                        DataCell(Text(row[1].toString().split(' ')[0])), // Buy Date (only date part)
+                                        DataCell(Text(row[2].toString())), // Stock Symbol
+                                        DataCell(Text(row[4].toString())), // Shares
+                                        DataCell(Text(row[3].toString())), // Buy Price
+                                        DataCell(Text(row[6].toString())), // Current Price
+                                        DataCell(Text(row[7].toString().split(' ')[0])), // Sell Date (only date part)
+                                        DataCell(Text(row[8].toString())), // Sell Price
+                                      ],
+                                    );
+                                  })
+                                  .toList(),
                             ),
                           ),
                         ],
@@ -145,18 +149,24 @@ class HomeView extends GetView<HomeController> {
       surfaceTintColor: AppColors.primaryColor,
       title: Row(
         children: [
-          AppText(
-            text: 'Safe Trade',
-            color: AppColors.whiteColor,
-          ),
-          const SizedBox(width: 10),
           Expanded(
+            flex: 2,
             child: AppText(
               text: controller.getUserEmail() ?? '',
               color: AppColors.whiteColor,
               fontSize: 12,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Center(
+              child: AppText(
+                text: 'Safe Trade',
+                color: AppColors.whiteColor,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -187,26 +197,51 @@ class HomeView extends GetView<HomeController> {
         children: [
           Expanded(
             child: CustomButton(
-              text:'From: ${controller.fromDate.value.toLocal()}'.split(' ')[0],
+              text: 'From: ${_formatMonthYear(controller.fromDate.value)}',
               backgroundColor: AppColors.primaryColor,
               fontColor: AppColors.whiteColor,
               isGradient: true,
+              fontSize: 14,
               onTap: () => controller.selectDate(context, true),
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: CustomButton(
-              text: 'To: ${controller.toDate.value.toLocal()}'.split(' ')[0],
+              text: 'To: ${_formatMonthYear(controller.toDate.value)}',
               backgroundColor: AppColors.primaryColor,
               fontColor: AppColors.whiteColor,
               isGradient: true,
+              fontSize: 14,
               onTap: () => controller.selectDate(context, false),
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatMonthYear(DateTime date) {
+    // Format date to show three-letter month and year (e.g., "Jan 2024")
+    return "${_getMonthName(date.month).substring(0, 3)} ${date.year}";
+  }
+
+  String _getMonthName(int month) {
+    switch (month) {
+      case 1: return 'January';
+      case 2: return 'February';
+      case 3: return 'March';
+      case 4: return 'April';
+      case 5: return 'May';
+      case 6: return 'June';
+      case 7: return 'July';
+      case 8: return 'August';
+      case 9: return 'September';
+      case 10: return 'October';
+      case 11: return 'November';
+      case 12: return 'December';
+      default: return '';
+    }
   }
 
   recordItems(BuildContext context, int index) {

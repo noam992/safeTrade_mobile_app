@@ -47,7 +47,7 @@ class StockFormController extends BaseController {
 
       ///Add new user data
       final newRow = [
-        "ijaz@gmail.com",
+        getUserEmail(),
         buyDate.text,
         stockSymbol.text,
         buyPrice.text,

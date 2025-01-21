@@ -154,21 +154,35 @@ class HomeController extends BaseController {
     DateTime firstDate = DateTime(2000);
     DateTime lastDate = DateTime(2100);
 
-    DateTime? pickedDate = await showDatePicker(
+    // Show month/year picker
+    showDialog(
       context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Select Month and Year"),
+          content: SizedBox(
+            height: 300,
+            width: 300,
+            child: CalendarDatePicker(
+              initialDate: initialDate,
+              firstDate: firstDate,
+              lastDate: lastDate,
+              initialCalendarMode: DatePickerMode.year,
+              onDateChanged: (DateTime date) {
+                // Set the date to the first day of the selected month
+                if (isFromDate) {
+                  fromDate.value = DateTime(date.year, date.month, 1);
+                } else {
+                  toDate.value = DateTime(date.year, date.month, 1);
+                }
+                Get.back(); // Close the dialog
+                update();
+              },
+            ),
+          ),
+        );
+      },
     );
-
-    if (pickedDate != null) {
-      if (isFromDate) {
-        fromDate.value = pickedDate;
-      } else {
-        toDate.value = pickedDate;
-      }
-      update();
-    }
   }
 
   void logoutUser({required context}) {
