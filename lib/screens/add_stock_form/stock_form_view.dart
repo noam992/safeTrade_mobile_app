@@ -96,9 +96,6 @@ class StockFormView extends GetView<StockFormController> {
                       borderColor: AppColors.primaryColor,
                       errorBorderColor: AppColors.redColor,
                       readOnly: true,
-                      validator: (value) => value!.isEmpty
-                          ? 'Please enter current share price'
-                          : null,
                       suffixIcon: IconButton(
                         onPressed: () async {
                           if (controller.stockSymbol.text.isNotEmpty) {
@@ -125,8 +122,6 @@ class StockFormView extends GetView<StockFormController> {
                       borderColor: AppColors.primaryColor,
                       errorBorderColor: AppColors.primaryColor,
                       readOnly: true,
-                      validator: (value) =>
-                          value!.isEmpty ? 'Please enter sell date' : null,
                       onFieldOnTap: () async {
                         DateTime? dateTime =
                             await controller.selectDate(context);
@@ -143,8 +138,6 @@ class StockFormView extends GetView<StockFormController> {
                       keyboardType: TextInputType.number,
                       borderColor: AppColors.primaryColor,
                       errorBorderColor: AppColors.redColor,
-                      validator: (value) =>
-                          value!.isEmpty ? 'Please enter sell price' : null,
                     ),
                     const SizedBox(height: 16),
                     CustomFormField(
@@ -154,9 +147,6 @@ class StockFormView extends GetView<StockFormController> {
                       keyboardType: TextInputType.number,
                       borderColor: AppColors.primaryColor,
                       errorBorderColor: AppColors.redColor,
-                      validator: (value) => value!.isEmpty
-                          ? 'Please enter profit percentage'
-                          : null,
                     ),
                     const SizedBox(height: 20),
                     Obx(

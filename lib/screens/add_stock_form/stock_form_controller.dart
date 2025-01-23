@@ -47,15 +47,15 @@ class StockFormController extends BaseController {
 
       ///Add new user data
       final newRow = [
-        "ijaz@gmail.com",
+        getUserEmail(),
         buyDate.text,
         stockSymbol.text,
         buyPrice.text,
         numberOfShares.text,
         "",
-        currentSharePrice.text,
-        sellDate.text,
-        sellPrice.text,
+        currentSharePrice.text.isEmpty ? "-" : currentSharePrice.text,
+        sellDate.text.isEmpty ? "-" : sellDate.text,
+        sellPrice.text.isEmpty ? "-" : sellPrice.text,
       ];
       await sheetsApi.spreadsheets.values.append(
         ValueRange(values: [newRow]),
