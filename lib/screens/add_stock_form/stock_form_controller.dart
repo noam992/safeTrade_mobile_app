@@ -53,9 +53,9 @@ class StockFormController extends BaseController {
         buyPrice.text,
         numberOfShares.text,
         "",
-        currentSharePrice.text,
-        sellDate.text,
-        sellPrice.text,
+        currentSharePrice.text.isEmpty ? "-" : currentSharePrice.text,
+        sellDate.text.isEmpty ? "-" : sellDate.text,
+        sellPrice.text.isEmpty ? "-" : sellPrice.text,
       ];
       await sheetsApi.spreadsheets.values.append(
         ValueRange(values: [newRow]),
