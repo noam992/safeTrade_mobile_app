@@ -4,6 +4,7 @@ import 'package:safe_trade/core/base/export.dart';
 import 'package:safe_trade/core/service/cache_manager.dart';
 import 'package:safe_trade/screens/add_stock_form/export.dart';
 import 'package:safe_trade/utils/app_colors.dart';
+import 'dart:math';
 
 import '../../widgets/export.dart';
 import 'export.dart';
@@ -37,170 +38,529 @@ class HomeView extends GetView<HomeController> {
               await controller.fetchSpreadsheetData();
               await controller.fetchStockFormData();
             },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height - AppBar().preferredSize.height,
-                child: Column(
-                  children: [
-                    // First Section - Date Filters
-                    Container(
-                      padding: const EdgeInsets.all(16),
+            child: OrientationBuilder(
+              builder: (context, orientation) {
+                if (orientation == Orientation.portrait) {
+                  // Portrait mode (Vertical)
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: MediaQuery.of(context).size.height,
+                      ),
                       child: Column(
                         children: [
-                          getDateFilter(context: context),
-                          const SizedBox(height: 16),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              headingRowColor: MaterialStateProperty.all(
-                                AppColors.primaryColor.withOpacity(0.1),
-                              ),
-                              columns: const [
-                                DataColumn(label: Text('Buy Date')),
-                                DataColumn(label: Text('Symbol')),
-                                DataColumn(label: Text('Shares')),
-                                DataColumn(label: Text('Buy Price')),
-                                DataColumn(label: Text('Current Price')),
-                                DataColumn(label: Text('Sell Date')),
-                                DataColumn(label: Text('Sell Price')),
-                                DataColumn(label: Text('Entry (total)')),
-                                DataColumn(label: Text('Portfolio (total)')),
-                                DataColumn(label: Text('Days (total)')),
-                                DataColumn(label: Text('Days (selected period)')),
-                                DataColumn(label: Text('Profit (total)')),
-                                DataColumn(label: Text('% Profit (total)')),
-                                DataColumn(label: Text('Profit (selected period)')),
-                                DataColumn(label: Text('% Profit (selected period)')),
+                          // First Section - Date Filters and Table
+                          Container(
+                            height: MediaQuery.of(context).size.height * 0.5,
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                getDateFilter(context: context),
+                                const SizedBox(height: 16),
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: SizedBox(
+                                      width: max(
+                                        MediaQuery.of(context).size.width * 4,
+                                        1800.0, // minimum width to accommodate all columns
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            color: AppColors.primaryColor.withOpacity(0.1),
+                                            child: Row(
+                                              children: const [
+                                                _HeaderCell('Buy Date', flex: 1, width: 100),
+                                                _HeaderCell('Symbol', flex: 1, width: 100),
+                                                _HeaderCell('Profit (selected period)', flex: 2, width: 160),
+                                                _HeaderCell('% Profit (selected period)', flex: 2, width: 160),
+                                                _HeaderCell('Days (selected period)', flex: 2, width: 160),
+                                                _HeaderCell('Buy Price', flex: 1, width: 100),
+                                                _HeaderCell('Current Price', flex: 1, width: 120),
+                                                _HeaderCell('Sell Price', flex: 1, width: 100),
+                                                _HeaderCell('Sell Date', flex: 1, width: 100),
+                                                _HeaderCell('Shares', flex: 1, width: 100),
+                                                _HeaderCell('Entry (total)', flex: 1, width: 120),
+                                                _HeaderCell('Portfolio (total)', flex: 1, width: 120),
+                                                _HeaderCell('Profit (total)', flex: 1, width: 120),
+                                                _HeaderCell('% Profit (total)', flex: 1, width: 120),
+                                                _HeaderCell('Days (total)', flex: 1, width: 100),
+                                              ],
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: SingleChildScrollView(
+                                              child: ListView.builder(
+                                                shrinkWrap: true,
+                                                physics: const NeverScrollableScrollPhysics(),
+                                                itemCount: controller.stockFormData
+                                                    .where((row) {
+                                                      if (row[0] == 'User Email') return false;
+                                                      if (row[0].toString() != controller.getUserEmail()) return false;
+                                                      
+                                                      // Calculate all the values first
+                                                      DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+                                                      DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                      DateTime endStockPrice = sellDate;
+                                                      
+                                                      // Calculate start and end of selected period
+                                                      DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+                                                      DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+                                                      
+                                                      // Calculate days in period
+                                                      int? daysInPeriod = calculateDaysInPeriod(
+                                                        buyDate: buyDate,
+                                                        endStockPrice: endStockPrice,
+                                                        periodStart: periodStart,
+                                                        periodEnd: periodEnd,
+                                                      );
+                                                      
+                                                      // Include rows where days in period is not null (including 0)
+                                                      return daysInPeriod != null;
+                                                    })
+                                                    .length,
+                                                itemBuilder: (context, index) {
+                                                  final row = controller.stockFormData
+                                                      .where((row) {
+                                                        if (row[0] == 'User Email') return false;
+                                                        if (row[0].toString() != controller.getUserEmail()) return false;
+                                                        
+                                                        // Calculate all the values first
+                                                        DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+                                                        DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                        DateTime endStockPrice = sellDate;
+                                                        
+                                                        // Calculate start and end of selected period
+                                                        DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+                                                        DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+                                                        
+                                                        // Calculate days in period
+                                                        int? daysInPeriod = calculateDaysInPeriod(
+                                                          buyDate: buyDate,
+                                                          endStockPrice: endStockPrice,
+                                                          periodStart: periodStart,
+                                                          periodEnd: periodEnd,
+                                                        );
+                                                        
+                                                        // Include rows where days in period is not null (including 0)
+                                                        return daysInPeriod != null;
+                                                      })
+                                                      .toList()[index];
+                                                  
+                                                  double shares = double.tryParse(row[4].toString()) ?? 0;
+                                                  double buyPrice = double.tryParse(row[3].toString()) ?? 0;
+                                                  String symbol = row[2].toString();
+                                                  double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
+                                                  double entryTotal = shares * buyPrice;
+                                                  
+                                                  // Calculate portfolio total
+                                                  double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+                                                  double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
+                                                  
+                                                  // Calculate days total
+                                                  DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+                                                  DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                  DateTime endDate = sellPrice > 0 ? sellDate : DateTime.now();
+                                                  int daysTotal = endDate.difference(buyDate).inDays;
+                                                  
+                                                  // Calculate profit and profit percentage
+                                                  double profitTotal = portfolioTotal == 0 ? 0 : portfolioTotal - entryTotal;
+                                                  double profitPercentage = entryTotal != 0 ? (profitTotal / entryTotal) * 100 : 0;
+                                                  
+                                                  // Calculate days in selected period
+                                                  DateTime endStockPrice = sellDate ?? DateTime.now();
+                                                  
+                                                  // Calculate start and end of selected period
+                                                  DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+                                                  DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+                                                  
+                                                  // Calculate days in selected period
+                                                  int? daysInPeriod = calculateDaysInPeriod(
+                                                    buyDate: buyDate,
+                                                    endStockPrice: endStockPrice,
+                                                    periodStart: periodStart,
+                                                    periodEnd: periodEnd,
+                                                  );
+                                                  
+                                                  // Calculate profit for selected period
+                                                  double? profitSelectedPeriod;
+                                                  double? profitPercentageSelectedPeriod;
+                                                  
+                                                  if (daysInPeriod != null && daysTotal > 0) {
+                                                    profitSelectedPeriod = (profitTotal / daysTotal) * daysInPeriod;
+                                                    
+                                                    // Calculate percentage profit for selected period
+                                                    if (entryTotal > 0) {
+                                                      profitPercentageSelectedPeriod = (profitSelectedPeriod / entryTotal) * 100;
+                                                    }
+                                                  }
+                                                  
+                                                  return Row(
+                                                    children: [
+                                                      _ContentCell(row[1].toString().split(' ')[0], flex: 1, width: 100),
+                                                      _ContentCell(symbol, flex: 1, width: 100),
+                                                      _ContentCell(
+                                                        profitSelectedPeriod?.toStringAsFixed(2) ?? '',
+                                                        flex: 2,
+                                                        width: 160,
+                                                        color: (profitSelectedPeriod ?? 0) > 0 
+                                                          ? Colors.green 
+                                                          : (profitSelectedPeriod ?? 0) < 0 
+                                                            ? Colors.red 
+                                                            : null,
+                                                      ),
+                                                      _ContentCell(
+                                                        profitPercentageSelectedPeriod != null 
+                                                          ? '${profitPercentageSelectedPeriod.toStringAsFixed(2)}%' 
+                                                          : '',
+                                                        flex: 2,
+                                                        width: 160,
+                                                        color: (profitPercentageSelectedPeriod ?? 0) > 0 
+                                                          ? Colors.green 
+                                                          : (profitPercentageSelectedPeriod ?? 0) < 0 
+                                                            ? Colors.red 
+                                                            : null,
+                                                      ),
+                                                      _ContentCell(daysInPeriod?.toString() ?? '', flex: 2, width: 160),
+                                                      _ContentCell(row[3].toString(), flex: 1, width: 100),
+                                                      _ContentCell(currentPrice.toStringAsFixed(2), flex: 1, width: 120),
+                                                      _ContentCell(row[8].toString(), flex: 1, width: 100),
+                                                      _ContentCell(row[7].toString().split(' ')[0], flex: 1, width: 100),
+                                                      _ContentCell(row[4].toString(), flex: 1, width: 100),
+                                                      _ContentCell(entryTotal.toStringAsFixed(2), flex: 1, width: 120),
+                                                      _ContentCell(portfolioTotal.toStringAsFixed(2), flex: 1, width: 120),
+                                                      _ContentCell(
+                                                        profitTotal.toStringAsFixed(2),
+                                                        flex: 1,
+                                                        width: 120,
+                                                        color: profitTotal > 0 
+                                                          ? Colors.green 
+                                                          : profitTotal < 0 
+                                                            ? Colors.red 
+                                                            : null,
+                                                      ),
+                                                      _ContentCell(
+                                                        '${profitPercentage.toStringAsFixed(2)}%',
+                                                        flex: 1,
+                                                        width: 120,
+                                                        color: profitPercentage > 0 
+                                                          ? Colors.green 
+                                                          : profitPercentage < 0 
+                                                            ? Colors.red 
+                                                            : null,
+                                                      ),
+                                                      _ContentCell(daysTotal.toString(), flex: 1, width: 100),
+                                                    ],
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ],
-                              rows: controller.stockFormData
-                                  .where((row) {
-                                    if (row[0] == 'User Email') return false;
-                                    return row[0].toString() == controller.getUserEmail();
-                                  })
-                                  .map((row) {
-                                    double shares = double.tryParse(row[4].toString()) ?? 0;
-                                    double buyPrice = double.tryParse(row[3].toString()) ?? 0;
-                                    String symbol = row[2].toString();
-                                    double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
-                                    double entryTotal = shares * buyPrice;
-                                    
-                                    // Calculate portfolio total
-                                    double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
-                                    double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
-                                    
-                                    // Calculate days total
-                                    DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-                                    DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
-                                    DateTime endDate = sellPrice > 0 ? sellDate : DateTime.now();
-                                    int daysTotal = endDate.difference(buyDate).inDays;
-                                    
-                                    // Calculate profit and profit percentage
-                                    double profitTotal = portfolioTotal == 0 ? 0 : portfolioTotal - entryTotal;
-                                    double profitPercentage = entryTotal != 0 ? (profitTotal / entryTotal) * 100 : 0;
-                                    
-                                    // Calculate days in selected period
-                                    DateTime endStockPrice = sellDate ?? DateTime.now();
-                                    
-                                    // Calculate start and end of selected period
-                                    DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
-                                    DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
-                                    
-                                    // Calculate days in selected period
-                                    int? daysInPeriod = calculateDaysInPeriod(
-                                      buyDate: buyDate,
-                                      endStockPrice: endStockPrice,
-                                      periodStart: periodStart,
-                                      periodEnd: periodEnd,
-                                    );
-                                    
-                                    // Calculate profit for selected period
-                                    double? profitSelectedPeriod;
-                                    double? profitPercentageSelectedPeriod;
-                                    
-                                    if (daysInPeriod != null && daysTotal > 0) {
-                                      profitSelectedPeriod = (profitTotal / daysTotal) * daysInPeriod;
-                                      
-                                      // Calculate percentage profit for selected period
-                                      if (entryTotal > 0) {
-                                        profitPercentageSelectedPeriod = (profitSelectedPeriod / entryTotal) * 100;
-                                      }
-                                    }
-                                    
-                                    return DataRow(
-                                      cells: [
-                                        DataCell(Text(row[1].toString().split(' ')[0])), // Buy Date
-                                        DataCell(Text(symbol)), // Stock Symbol
-                                        DataCell(Text(row[4].toString())), // Shares
-                                        DataCell(Text(row[3].toString())), // Buy Price
-                                        DataCell(Text(currentPrice.toStringAsFixed(2))), // Current Price (real-time)
-                                        DataCell(Text(row[7].toString().split(' ')[0])), // Sell Date
-                                        DataCell(Text(row[8].toString())), // Sell Price
-                                        DataCell(Text(entryTotal.toStringAsFixed(2))), // Entry total
-                                        DataCell(Text(portfolioTotal.toStringAsFixed(2))), // Portfolio total
-                                        DataCell(Text(daysTotal.toString())), // Days total
-                                        DataCell(Text(daysInPeriod?.toString() ?? '')), // Days in selected period
-                                        DataCell(Text(profitTotal.toStringAsFixed(2))), // Profit total
-                                        DataCell(Text('${profitPercentage.toStringAsFixed(2)}%')), // Profit percentage
-                                        DataCell(Text(profitSelectedPeriod?.toStringAsFixed(2) ?? '')), // Profit selected period
-                                        DataCell(Text(profitPercentageSelectedPeriod != null 
-                                          ? '${profitPercentageSelectedPeriod.toStringAsFixed(2)}%' 
-                                          : '')), // Profit percentage selected period
-                                      ],
-                                    );
-                                  })
-                                  .toList(),
+                            ),
+                          ),
+                          // Second Section - Items List
+                          Container(
+                            height: MediaQuery.of(context).size.height * 0.5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(30),
+                                topRight: Radius.circular(30),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 20),
+                                controller.isLoading.isTrue
+                                    ? const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                    : controller.spreadsheetData.isNotEmpty
+                                        ? Expanded(
+                                            child: ListView.builder(
+                                              itemCount: controller.spreadsheetData.length,
+                                              itemBuilder: (context, index) {
+                                                return recordItems(context, index);
+                                              },
+                                            ),
+                                          )
+                                        : const Center(
+                                            child: Text('No data found'),
+                                          ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Divider Line
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      height: 1,
-                      color: Colors.grey[300],
-                    ),
-                    // Second Section - Empty
-                    Container(
-                      height: MediaQuery.of(context).size.height * 0.2,
-                    ),
-                    // Third Section - Items List
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
+                  );
+                } else {
+                  // Landscape mode (Horizontal)
+                  return Row(
+                    children: [
+                      // First Section - Date Filters and Table
+                      Expanded(
+                        child: Container(
+                          width: MediaQuery.of(context).size.width * 0.5,
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              getDateFilter(context: context),
+                              const SizedBox(height: 16),
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: SizedBox(
+                                    width: max(
+                                      MediaQuery.of(context).size.width * 4,
+                                      1800.0, // minimum width to accommodate all columns
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          color: AppColors.primaryColor.withOpacity(0.1),
+                                          child: Row(
+                                            children: const [
+                                              _HeaderCell('Buy Date', flex: 1, width: 100),
+                                              _HeaderCell('Symbol', flex: 1, width: 100),
+                                              _HeaderCell('Profit (selected period)', flex: 2, width: 160),
+                                              _HeaderCell('% Profit (selected period)', flex: 2, width: 160),
+                                              _HeaderCell('Days (selected period)', flex: 2, width: 160),
+                                              _HeaderCell('Buy Price', flex: 1, width: 100),
+                                              _HeaderCell('Current Price', flex: 1, width: 120),
+                                              _HeaderCell('Sell Price', flex: 1, width: 100),
+                                              _HeaderCell('Sell Date', flex: 1, width: 100),
+                                              _HeaderCell('Shares', flex: 1, width: 100),
+                                              _HeaderCell('Entry (total)', flex: 1, width: 120),
+                                              _HeaderCell('Portfolio (total)', flex: 1, width: 120),
+                                              _HeaderCell('Profit (total)', flex: 1, width: 120),
+                                              _HeaderCell('% Profit (total)', flex: 1, width: 120),
+                                              _HeaderCell('Days (total)', flex: 1, width: 100),
+                                            ],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: SingleChildScrollView(
+                                            child: ListView.builder(
+                                              shrinkWrap: true,
+                                              physics: const NeverScrollableScrollPhysics(),
+                                              itemCount: controller.stockFormData
+                                                  .where((row) {
+                                                    if (row[0] == 'User Email') return false;
+                                                    if (row[0].toString() != controller.getUserEmail()) return false;
+                                                    
+                                                    // Calculate all the values first
+                                                    DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+                                                    DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                    DateTime endStockPrice = sellDate;
+                                                    
+                                                    // Calculate start and end of selected period
+                                                    DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+                                                    DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+                                                    
+                                                    // Calculate days in period
+                                                    int? daysInPeriod = calculateDaysInPeriod(
+                                                      buyDate: buyDate,
+                                                      endStockPrice: endStockPrice,
+                                                      periodStart: periodStart,
+                                                      periodEnd: periodEnd,
+                                                    );
+                                                    
+                                                    // Include rows where days in period is not null (including 0)
+                                                    return daysInPeriod != null;
+                                                  })
+                                                  .length,
+                                              itemBuilder: (context, index) {
+                                                final row = controller.stockFormData
+                                                    .where((row) {
+                                                      if (row[0] == 'User Email') return false;
+                                                      if (row[0].toString() != controller.getUserEmail()) return false;
+                                                      
+                                                      // Calculate all the values first
+                                                      DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+                                                      DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                      DateTime endStockPrice = sellDate;
+                                                      
+                                                      // Calculate start and end of selected period
+                                                      DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+                                                      DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+                                                      
+                                                      // Calculate days in period
+                                                      int? daysInPeriod = calculateDaysInPeriod(
+                                                        buyDate: buyDate,
+                                                        endStockPrice: endStockPrice,
+                                                        periodStart: periodStart,
+                                                        periodEnd: periodEnd,
+                                                      );
+                                                      
+                                                      // Include rows where days in period is not null (including 0)
+                                                      return daysInPeriod != null;
+                                                    })
+                                                    .toList()[index];
+                                                
+                                                double shares = double.tryParse(row[4].toString()) ?? 0;
+                                                double buyPrice = double.tryParse(row[3].toString()) ?? 0;
+                                                String symbol = row[2].toString();
+                                                double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
+                                                double entryTotal = shares * buyPrice;
+                                                
+                                                // Calculate portfolio total
+                                                double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+                                                double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
+                                                
+                                                // Calculate days total
+                                                DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+                                                DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                DateTime endDate = sellPrice > 0 ? sellDate : DateTime.now();
+                                                int daysTotal = endDate.difference(buyDate).inDays;
+                                                
+                                                // Calculate profit and profit percentage
+                                                double profitTotal = portfolioTotal == 0 ? 0 : portfolioTotal - entryTotal;
+                                                double profitPercentage = entryTotal != 0 ? (profitTotal / entryTotal) * 100 : 0;
+                                                
+                                                // Calculate days in selected period
+                                                DateTime endStockPrice = sellDate ?? DateTime.now();
+                                                
+                                                // Calculate start and end of selected period
+                                                DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+                                                DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+                                                
+                                                // Calculate days in selected period
+                                                int? daysInPeriod = calculateDaysInPeriod(
+                                                  buyDate: buyDate,
+                                                  endStockPrice: endStockPrice,
+                                                  periodStart: periodStart,
+                                                  periodEnd: periodEnd,
+                                                );
+                                                
+                                                // Calculate profit for selected period
+                                                double? profitSelectedPeriod;
+                                                double? profitPercentageSelectedPeriod;
+                                                
+                                                if (daysInPeriod != null && daysTotal > 0) {
+                                                  profitSelectedPeriod = (profitTotal / daysTotal) * daysInPeriod;
+                                                  
+                                                  // Calculate percentage profit for selected period
+                                                  if (entryTotal > 0) {
+                                                    profitPercentageSelectedPeriod = (profitSelectedPeriod / entryTotal) * 100;
+                                                  }
+                                                }
+                                                
+                                                return Row(
+                                                  children: [
+                                                    _ContentCell(row[1].toString().split(' ')[0], flex: 1, width: 100),
+                                                    _ContentCell(symbol, flex: 1, width: 100),
+                                                    _ContentCell(
+                                                      profitSelectedPeriod?.toStringAsFixed(2) ?? '',
+                                                      flex: 2,
+                                                      width: 160,
+                                                      color: (profitSelectedPeriod ?? 0) > 0 
+                                                        ? Colors.green 
+                                                        : (profitSelectedPeriod ?? 0) < 0 
+                                                          ? Colors.red 
+                                                          : null,
+                                                    ),
+                                                    _ContentCell(
+                                                      profitPercentageSelectedPeriod != null 
+                                                        ? '${profitPercentageSelectedPeriod.toStringAsFixed(2)}%' 
+                                                        : '',
+                                                      flex: 2,
+                                                      width: 160,
+                                                      color: (profitPercentageSelectedPeriod ?? 0) > 0 
+                                                        ? Colors.green 
+                                                        : (profitPercentageSelectedPeriod ?? 0) < 0 
+                                                          ? Colors.red 
+                                                          : null,
+                                                    ),
+                                                    _ContentCell(daysInPeriod?.toString() ?? '', flex: 2, width: 160),
+                                                    _ContentCell(row[3].toString(), flex: 1, width: 100),
+                                                    _ContentCell(currentPrice.toStringAsFixed(2), flex: 1, width: 120),
+                                                    _ContentCell(row[8].toString(), flex: 1, width: 100),
+                                                    _ContentCell(row[7].toString().split(' ')[0], flex: 1, width: 100),
+                                                    _ContentCell(row[4].toString(), flex: 1, width: 100),
+                                                    _ContentCell(entryTotal.toStringAsFixed(2), flex: 1, width: 120),
+                                                    _ContentCell(portfolioTotal.toStringAsFixed(2), flex: 1, width: 120),
+                                                    _ContentCell(
+                                                      profitTotal.toStringAsFixed(2),
+                                                      flex: 1,
+                                                      width: 120,
+                                                      color: profitTotal > 0 
+                                                        ? Colors.green 
+                                                        : profitTotal < 0 
+                                                          ? Colors.red 
+                                                          : null,
+                                                    ),
+                                                    _ContentCell(
+                                                      '${profitPercentage.toStringAsFixed(2)}%',
+                                                      flex: 1,
+                                                      width: 120,
+                                                      color: profitPercentage > 0 
+                                                        ? Colors.green 
+                                                        : profitPercentage < 0 
+                                                          ? Colors.red 
+                                                          : null,
+                                                    ),
+                                                    _ContentCell(daysTotal.toString(), flex: 1, width: 100),
+                                                  ],
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 20),
-                            controller.isLoading.isTrue
-                                ? const Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                : controller.spreadsheetData.isNotEmpty
-                                    ? Expanded(
-                                        child: ListView.builder(
-                                          itemCount: controller.spreadsheetData.length,
-                                          itemBuilder: (context, index) {
-                                            return recordItems(context, index);
-                                          },
+                      ),
+                      // Second Section - Items List
+                      Expanded(
+                        child: Container(
+                          width: MediaQuery.of(context).size.width * 0.5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(30),
+                              bottomLeft: Radius.circular(30),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 20),
+                              controller.isLoading.isTrue
+                                  ? const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
+                                  : controller.spreadsheetData.isNotEmpty
+                                      ? Expanded(
+                                          child: ListView.builder(
+                                            itemCount: controller.spreadsheetData.length,
+                                            itemBuilder: (context, index) {
+                                              return recordItems(context, index);
+                                            },
+                                          ),
+                                        )
+                                      : const Center(
+                                          child: Text('No data found'),
                                         ),
-                                      )
-                                    : const Center(
-                                        child: Text('No data found'),
-                                      ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                    ],
+                  );
+                }
+              },
             ),
           ),
         );
@@ -554,5 +914,64 @@ class HomeView extends GetView<HomeController> {
         periodEnd;
 
     return effectiveEnd.difference(effectiveStart).inDays;
+  }
+}
+
+class _HeaderCell extends StatelessWidget {
+  final String text;
+  final int flex;
+  final double width;
+
+  const _HeaderCell(this.text, {required this.flex, required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        softWrap: true,
+      ),
+    );
+  }
+}
+
+class _ContentCell extends StatelessWidget {
+  final String text;
+  final int flex;
+  final Color? color;
+  final double width;
+
+  const _ContentCell(this.text, {
+    required this.flex, 
+    this.color,
+    required this.width,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 13,
+        ),
+        textAlign: TextAlign.center,
+        softWrap: true,
+        maxLines: 2,
+      ),
+    );
   }
 }
