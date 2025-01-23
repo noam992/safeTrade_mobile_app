@@ -65,6 +65,10 @@ class HomeView extends GetView<HomeController> {
                                 DataColumn(label: Text('Sell Date')),
                                 DataColumn(label: Text('Sell Price')),
                                 DataColumn(label: Text('Entry (total)')),
+                                DataColumn(label: Text('Portfolio (total)')),
+                                DataColumn(label: Text('Days (total)')),
+                                DataColumn(label: Text('Profit (total)')),
+                                DataColumn(label: Text('% Profit (total)')),
                               ],
                               rows: controller.stockFormData
                                   .where((row) {
@@ -78,6 +82,20 @@ class HomeView extends GetView<HomeController> {
                                     double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
                                     double entryTotal = shares * buyPrice;
                                     
+                                    // Calculate portfolio total
+                                    double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+                                    double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
+                                    
+                                    // Calculate days total
+                                    DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+                                    DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                    DateTime endDate = sellPrice > 0 ? sellDate : DateTime.now();
+                                    int daysTotal = endDate.difference(buyDate).inDays;
+                                    
+                                    // Calculate profit and profit percentage
+                                    double profitTotal = portfolioTotal == 0 ? 0 : portfolioTotal - entryTotal;
+                                    double profitPercentage = entryTotal != 0 ? (profitTotal / entryTotal) * 100 : 0;
+                                    
                                     return DataRow(
                                       cells: [
                                         DataCell(Text(row[1].toString().split(' ')[0])), // Buy Date
@@ -88,6 +106,10 @@ class HomeView extends GetView<HomeController> {
                                         DataCell(Text(row[7].toString().split(' ')[0])), // Sell Date
                                         DataCell(Text(row[8].toString())), // Sell Price
                                         DataCell(Text(entryTotal.toStringAsFixed(2))), // Entry total
+                                        DataCell(Text(portfolioTotal.toStringAsFixed(2))), // Portfolio total
+                                        DataCell(Text(daysTotal.toString())), // Days total
+                                        DataCell(Text(profitTotal.toStringAsFixed(2))), // Profit total
+                                        DataCell(Text('${profitPercentage.toStringAsFixed(2)}%')), // Profit percentage
                                       ],
                                     );
                                   })

@@ -243,7 +243,7 @@ class HomeController extends BaseController {
   }
 
   void startStockPriceUpdates() {
-    stockUpdateTimer = Timer.periodic(const Duration(minutes: 2), (timer) {
+    stockUpdateTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
       updateCurrentStockPrices();
     });
     updateCurrentStockPrices();
@@ -251,24 +251,38 @@ class HomeController extends BaseController {
 
   Future<void> updateCurrentStockPrices() async {
     try {
+      if (stockFormData.isEmpty) {
+        debugPrint('No stock form data available');
+        return;
+      }
+
       final symbols = stockFormData
-          .where((row) => row[0].toString() == getUserEmail())
+          .where((row) => 
+              row.isNotEmpty && 
+              row[0].toString() == getUserEmail() &&
+              row[2].toString().isNotEmpty)
           .map((row) => row[2].toString())
           .toSet();
 
       for (String symbol in symbols) {
         try {
-          // Get current stock price using yahoo_finance_data_reader
-          YahooFinanceResponse response = await YahooFinanceDailyReader().getDailyDTOs(symbol);
+          YahooFinanceResponse response = await YahooFinanceDailyReader()
+              .getDailyDTOs(symbol)
+              .timeout(const Duration(seconds: 10)); // Add timeout
           
           if (response.candlesData.isNotEmpty) {
-            // Get the most recent candle data (current price)
             YahooFinanceCandleData latestCandle = response.candlesData.last;
             currentStockPrices[symbol] = latestCandle.close;
             debugPrint('Updated price for $symbol: ${latestCandle.close}');
+          } else {
+            debugPrint('No candle data available for $symbol');
           }
         } catch (e) {
           debugPrint('Error fetching price for symbol $symbol: $e');
+          // Keep the previous price if there's an error
+          if (!currentStockPrices.containsKey(symbol)) {
+            currentStockPrices[symbol] = 0.0;
+          }
         }
       }
       update();
@@ -280,6 +294,7 @@ class HomeController extends BaseController {
   @override
   void dispose() {
     stockUpdateTimer?.cancel();
+    currentStockPrices.clear();
     super.dispose();
   }
 
