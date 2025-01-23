@@ -243,7 +243,7 @@ class HomeController extends BaseController {
   }
 
   void startStockPriceUpdates() {
-    stockUpdateTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
+    stockUpdateTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       updateCurrentStockPrices();
     });
     updateCurrentStockPrices();
@@ -264,22 +264,81 @@ class HomeController extends BaseController {
           .map((row) => row[2].toString())
           .toSet();
 
+      // Fetch current prices from Google Sheets as backup
+      final client = await DriverConstants.authenticate();
+      final sheetsApi = sheets.SheetsApi(client);
+      final response = await sheetsApi.spreadsheets.values.get(
+        DriverConstants.stockListSpreadsheetId,
+        DriverConstants.stockListRange,
+      );
+      final sheetData = response.values ?? [];
+
       for (String symbol in symbols) {
         try {
+          // First attempt: Try Yahoo Finance
           YahooFinanceResponse response = await YahooFinanceDailyReader()
               .getDailyDTOs(symbol)
-              .timeout(const Duration(seconds: 10)); // Add timeout
+              .timeout(const Duration(seconds: 10));
           
           if (response.candlesData.isNotEmpty) {
             YahooFinanceCandleData latestCandle = response.candlesData.last;
             currentStockPrices[symbol] = latestCandle.close;
-            debugPrint('Updated price for $symbol: ${latestCandle.close}');
-          } else {
-            debugPrint('No candle data available for $symbol');
+            debugPrint('Updated price for $symbol from Yahoo: ${latestCandle.close}');
+            continue; // Skip to next symbol if successful
           }
         } catch (e) {
-          debugPrint('Error fetching price for symbol $symbol: $e');
-          // Keep the previous price if there's an error
+          debugPrint('Yahoo Finance error for $symbol: $e');
+        }
+
+        // Second attempt: Try Google Sheets stock list
+        try {
+          final symbolData = sheetData.where((row) => 
+            row.isNotEmpty && 
+            row.length > 1 && 
+            row[1].toString() == symbol
+          ).toList();
+
+          if (symbolData.isNotEmpty) {
+            final latestRow = symbolData.last;
+            final sheetPrice = double.tryParse(latestRow[10].toString());
+            if (sheetPrice != null) {
+              currentStockPrices[symbol] = sheetPrice;
+              debugPrint('Updated price for $symbol from stock list sheet: $sheetPrice');
+              continue;
+            }
+          }
+        } catch (e) {
+          debugPrint('Stock list sheet error for $symbol: $e');
+        }
+
+        // Third attempt: Try stock form data
+        try {
+          final stockFormEntry = stockFormData.firstWhere(
+            (row) => 
+              row.isNotEmpty && 
+              row[0].toString() == getUserEmail() &&
+              row[2].toString() == symbol,
+            orElse: () => [],
+          );
+
+          if (stockFormEntry.isNotEmpty) {
+            // Assuming Current Price is in the stock form data
+            // You'll need to replace the index (5) with the correct column index
+            final formPrice = double.tryParse(stockFormEntry[6].toString());
+            if (formPrice != null) {
+              currentStockPrices[symbol] = formPrice;
+              debugPrint('Updated price for $symbol from stock form: $formPrice');
+              continue;
+            }
+          }
+          
+          debugPrint('No price found in any source for $symbol');
+          // If no price found in any source, keep existing price or set to 0
+          if (!currentStockPrices.containsKey(symbol)) {
+            currentStockPrices[symbol] = 0.0;
+          }
+        } catch (e) {
+          debugPrint('Stock form error for $symbol: $e');
           if (!currentStockPrices.containsKey(symbol)) {
             currentStockPrices[symbol] = 0.0;
           }
