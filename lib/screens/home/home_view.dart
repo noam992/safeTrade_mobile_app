@@ -67,8 +67,11 @@ class HomeView extends GetView<HomeController> {
                                 DataColumn(label: Text('Entry (total)')),
                                 DataColumn(label: Text('Portfolio (total)')),
                                 DataColumn(label: Text('Days (total)')),
+                                DataColumn(label: Text('Days (selected period)')),
                                 DataColumn(label: Text('Profit (total)')),
                                 DataColumn(label: Text('% Profit (total)')),
+                                DataColumn(label: Text('Profit (selected period)')),
+                                DataColumn(label: Text('% Profit (selected period)')),
                               ],
                               rows: controller.stockFormData
                                   .where((row) {
@@ -96,6 +99,34 @@ class HomeView extends GetView<HomeController> {
                                     double profitTotal = portfolioTotal == 0 ? 0 : portfolioTotal - entryTotal;
                                     double profitPercentage = entryTotal != 0 ? (profitTotal / entryTotal) * 100 : 0;
                                     
+                                    // Calculate days in selected period
+                                    DateTime endStockPrice = sellDate ?? DateTime.now();
+                                    
+                                    // Calculate start and end of selected period
+                                    DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+                                    DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+                                    
+                                    // Calculate days in selected period
+                                    int? daysInPeriod = calculateDaysInPeriod(
+                                      buyDate: buyDate,
+                                      endStockPrice: endStockPrice,
+                                      periodStart: periodStart,
+                                      periodEnd: periodEnd,
+                                    );
+                                    
+                                    // Calculate profit for selected period
+                                    double? profitSelectedPeriod;
+                                    double? profitPercentageSelectedPeriod;
+                                    
+                                    if (daysInPeriod != null && daysTotal > 0) {
+                                      profitSelectedPeriod = (profitTotal / daysTotal) * daysInPeriod;
+                                      
+                                      // Calculate percentage profit for selected period
+                                      if (entryTotal > 0) {
+                                        profitPercentageSelectedPeriod = (profitSelectedPeriod / entryTotal) * 100;
+                                      }
+                                    }
+                                    
                                     return DataRow(
                                       cells: [
                                         DataCell(Text(row[1].toString().split(' ')[0])), // Buy Date
@@ -108,8 +139,13 @@ class HomeView extends GetView<HomeController> {
                                         DataCell(Text(entryTotal.toStringAsFixed(2))), // Entry total
                                         DataCell(Text(portfolioTotal.toStringAsFixed(2))), // Portfolio total
                                         DataCell(Text(daysTotal.toString())), // Days total
+                                        DataCell(Text(daysInPeriod?.toString() ?? '')), // Days in selected period
                                         DataCell(Text(profitTotal.toStringAsFixed(2))), // Profit total
                                         DataCell(Text('${profitPercentage.toStringAsFixed(2)}%')), // Profit percentage
+                                        DataCell(Text(profitSelectedPeriod?.toStringAsFixed(2) ?? '')), // Profit selected period
+                                        DataCell(Text(profitPercentageSelectedPeriod != null 
+                                          ? '${profitPercentageSelectedPeriod.toStringAsFixed(2)}%' 
+                                          : '')), // Profit percentage selected period
                                       ],
                                     );
                                   })
@@ -490,5 +526,33 @@ class HomeView extends GetView<HomeController> {
 
     // Format to two decimal places
     return number.toStringAsFixed(2);
+  }
+
+  int? calculateDaysInPeriod({
+    required DateTime buyDate,
+    required DateTime endStockPrice,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+  }) {
+    // Check if date range is outside the period
+    if (periodStart.isAfter(endStockPrice) || 
+        periodEnd.isBefore(DateTime(buyDate.year, buyDate.month, 1))) {
+      return null;
+    }
+
+    bool sameEndMonth = endStockPrice.year == periodEnd.year && 
+                       endStockPrice.month == periodEnd.month;
+    bool sameBuyMonth = buyDate.year == periodStart.year && 
+                       buyDate.month == periodStart.month;
+
+    DateTime effectiveStart = sameBuyMonth ? 
+        buyDate : 
+        DateTime(periodStart.year, periodStart.month, 1);
+    
+    DateTime effectiveEnd = sameEndMonth ? 
+        endStockPrice : 
+        periodEnd;
+
+    return effectiveEnd.difference(effectiveStart).inDays;
   }
 }
