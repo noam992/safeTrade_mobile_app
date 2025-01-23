@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -5,6 +7,8 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/sheets/v4.dart' as sheets;
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:safe_trade/core/base/export.dart';
+import 'package:http/http.dart' as http;
+import 'package:yahoo_finance_data_reader/yahoo_finance_data_reader.dart';
 
 import '../../utils/export.dart';
 import '../login/export.dart';
@@ -17,10 +21,14 @@ class HomeController extends BaseController {
   Rx<DateTime> fromDate=DateTime.now().obs;
   Rx<DateTime> toDate=DateTime.now().add(const Duration(days: 1)).obs;
 
+  Timer? stockUpdateTimer;
+  final Map<String, double> currentStockPrices = <String, double>{}.obs;
+
   @override
   void onInit() {
     fetchSpreadsheetData();
     fetchStockFormData();
+    startStockPriceUpdates();
     super.onInit();
   }
 
@@ -150,36 +158,75 @@ class HomeController extends BaseController {
 
   ///date filters
   Future<void> selectDate(BuildContext context, bool isFromDate) async {
-    DateTime initialDate = DateTime.now();
-    DateTime firstDate = DateTime(2000);
-    DateTime lastDate = DateTime(2100);
+    DateTime initialDate = isFromDate ? fromDate.value : toDate.value;
+    int selectedYear = initialDate.year;
+    int selectedMonth = initialDate.month;
 
-    // Show month/year picker
-    showDialog(
+    await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Select Month and Year"),
-          content: SizedBox(
-            height: 300,
-            width: 300,
-            child: CalendarDatePicker(
-              initialDate: initialDate,
-              firstDate: firstDate,
-              lastDate: lastDate,
-              initialCalendarMode: DatePickerMode.year,
-              onDateChanged: (DateTime date) {
-                // Set the date to the first day of the selected month
-                if (isFromDate) {
-                  fromDate.value = DateTime(date.year, date.month, 1);
-                } else {
-                  toDate.value = DateTime(date.year, date.month, 1);
-                }
-                Get.back(); // Close the dialog
-                update();
-              },
-            ),
-          ),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("Select Month and Year"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Year Dropdown
+                  DropdownButton<int>(
+                    value: selectedYear,
+                    items: List.generate(51, (index) => 2000 + index)
+                        .map((year) => DropdownMenuItem(
+                              value: year,
+                              child: Text(year.toString()),
+                            ))
+                        .toList(),
+                    onChanged: (year) {
+                      if (year != null) {
+                        setState(() => selectedYear = year);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  // Month Dropdown
+                  DropdownButton<int>(
+                    value: selectedMonth,
+                    items: List.generate(12, (index) => index + 1)
+                        .map((month) => DropdownMenuItem(
+                              value: month,
+                              child: Text(
+                                DateTime(2022, month).toString().split(' ')[0].split('-')[1],
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (month) {
+                      if (month != null) {
+                        setState(() => selectedMonth = month);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (isFromDate) {
+                      fromDate.value = DateTime(selectedYear, selectedMonth, 1);
+                    } else {
+                      toDate.value = DateTime(selectedYear, selectedMonth, 1);
+                    }
+                    update();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -195,9 +242,44 @@ class HomeController extends BaseController {
     );
   }
 
+  void startStockPriceUpdates() {
+    stockUpdateTimer = Timer.periodic(const Duration(minutes: 2), (timer) {
+      updateCurrentStockPrices();
+    });
+    updateCurrentStockPrices();
+  }
+
+  Future<void> updateCurrentStockPrices() async {
+    try {
+      final symbols = stockFormData
+          .where((row) => row[0].toString() == getUserEmail())
+          .map((row) => row[2].toString())
+          .toSet();
+
+      for (String symbol in symbols) {
+        try {
+          // Get current stock price using yahoo_finance_data_reader
+          YahooFinanceResponse response = await YahooFinanceDailyReader().getDailyDTOs(symbol);
+          
+          if (response.candlesData.isNotEmpty) {
+            // Get the most recent candle data (current price)
+            YahooFinanceCandleData latestCandle = response.candlesData.last;
+            currentStockPrices[symbol] = latestCandle.close;
+            debugPrint('Updated price for $symbol: ${latestCandle.close}');
+          }
+        } catch (e) {
+          debugPrint('Error fetching price for symbol $symbol: $e');
+        }
+      }
+      update();
+    } catch (e) {
+      debugPrint('Error updating stock prices: $e');
+    }
+  }
+
   @override
   void dispose() {
-    // TODO: implement dispose
+    stockUpdateTimer?.cancel();
     super.dispose();
   }
 

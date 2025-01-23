@@ -57,30 +57,37 @@ class HomeView extends GetView<HomeController> {
                                 AppColors.primaryColor.withOpacity(0.1),
                               ),
                               columns: const [
-                                DataColumn(label: Text('Date')),
+                                DataColumn(label: Text('Buy Date')),
                                 DataColumn(label: Text('Symbol')),
                                 DataColumn(label: Text('Shares')),
                                 DataColumn(label: Text('Buy Price')),
                                 DataColumn(label: Text('Current Price')),
                                 DataColumn(label: Text('Sell Date')),
                                 DataColumn(label: Text('Sell Price')),
+                                DataColumn(label: Text('Entry (total)')),
                               ],
                               rows: controller.stockFormData
                                   .where((row) {
-                                    // Skip header row and filter by user email
                                     if (row[0] == 'User Email') return false;
                                     return row[0].toString() == controller.getUserEmail();
                                   })
                                   .map((row) {
+                                    double shares = double.tryParse(row[4].toString()) ?? 0;
+                                    double buyPrice = double.tryParse(row[3].toString()) ?? 0;
+                                    String symbol = row[2].toString();
+                                    double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
+                                    double entryTotal = shares * buyPrice;
+                                    
                                     return DataRow(
                                       cells: [
-                                        DataCell(Text(row[1].toString().split(' ')[0])), // Buy Date (only date part)
-                                        DataCell(Text(row[2].toString())), // Stock Symbol
+                                        DataCell(Text(row[1].toString().split(' ')[0])), // Buy Date
+                                        DataCell(Text(symbol)), // Stock Symbol
                                         DataCell(Text(row[4].toString())), // Shares
                                         DataCell(Text(row[3].toString())), // Buy Price
-                                        DataCell(Text(row[6].toString())), // Current Price
-                                        DataCell(Text(row[7].toString().split(' ')[0])), // Sell Date (only date part)
+                                        DataCell(Text(currentPrice.toStringAsFixed(2))), // Current Price (real-time)
+                                        DataCell(Text(row[7].toString().split(' ')[0])), // Sell Date
                                         DataCell(Text(row[8].toString())), // Sell Price
+                                        DataCell(Text(entryTotal.toStringAsFixed(2))), // Entry total
                                       ],
                                     );
                                   })
