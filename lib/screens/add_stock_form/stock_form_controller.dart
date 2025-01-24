@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:googleapis/sheets/v4.dart';
 import 'package:http/http.dart' as http;
 import 'package:safe_trade/core/base/export.dart';
+import 'package:safe_trade/screens/home/home_controller.dart';
 
 import '../../utils/export.dart';
 
@@ -64,6 +65,14 @@ class StockFormController extends BaseController {
       isLoading.value = false;
       client.close();
       update();
+
+      // Get the HomeController instance and refresh the data
+      final homeController = Get.find<HomeController>();
+      await homeController.fetchSpreadsheetData();
+      await homeController.fetchStockFormData();
+      await homeController.updateCurrentStockPrices();
+      homeController.startStockPriceUpdates();
+
       return true;
     } else {
       AppUtils.showFailureSnackBar(

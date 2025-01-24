@@ -38,6 +38,8 @@ class HomeView extends GetView<HomeController> {
             onRefresh: () async {
               await controller.fetchSpreadsheetData();
               await controller.fetchStockFormData();
+              await controller.updateCurrentStockPrices();
+              controller.startStockPriceUpdates();
             },
             child: OrientationBuilder(
               builder: (context, orientation) {
