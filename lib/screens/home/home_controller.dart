@@ -18,8 +18,17 @@ class HomeController extends BaseController {
   List<List<dynamic>> stockFormData = [];
   RxBool isLoading = true.obs;
 
-  Rx<DateTime> fromDate=DateTime.now().obs;
-  Rx<DateTime> toDate=DateTime.now().add(const Duration(days: 1)).obs;
+  Rx<DateTime> fromDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1
+  ).obs;
+  
+  Rx<DateTime> toDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1
+  ).obs;
 
   Timer? stockUpdateTimer;
   final Map<String, double> currentStockPrices = <String, double>{}.obs;
@@ -27,8 +36,12 @@ class HomeController extends BaseController {
   @override
   void onInit() {
     fetchSpreadsheetData();
-    fetchStockFormData();
-    startStockPriceUpdates();
+    fetchStockFormData().then((_) {
+      // Once stock form data is loaded, update prices immediately and start timer
+      updateCurrentStockPrices().then((_) {
+        startStockPriceUpdates();
+      });
+    });
     super.onInit();
   }
 
@@ -159,6 +172,7 @@ class HomeController extends BaseController {
   ///date filters
   Future<void> selectDate(BuildContext context, bool isFromDate) async {
     DateTime initialDate = isFromDate ? fromDate.value : toDate.value;
+    DateTime now = DateTime.now();
     int selectedYear = initialDate.year;
     int selectedMonth = initialDate.month;
 
@@ -167,15 +181,34 @@ class HomeController extends BaseController {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            // Calculate valid year range
+            int maxYear = now.year;
+            
+            // For 'To' date, limit to current month/year
+            bool isValidSelection() {
+              if (isFromDate) {
+                // From date can't be after To date
+                DateTime selectedDate = DateTime(selectedYear, selectedMonth);
+                DateTime toDateTime = toDate.value;
+                return !selectedDate.isAfter(toDateTime);
+              } else {
+                // To date can't be after current date and can't be before From date
+                DateTime selectedDate = DateTime(selectedYear, selectedMonth);
+                DateTime fromDateTime = fromDate.value;
+                DateTime maxDate = DateTime(now.year, now.month);
+                return !selectedDate.isAfter(maxDate) && !selectedDate.isBefore(fromDateTime);
+              }
+            }
+
             return AlertDialog(
-              title: const Text("Select Month and Year"),
+              title: Text(isFromDate ? "Select From Month" : "Select To Month"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Year Dropdown
                   DropdownButton<int>(
                     value: selectedYear,
-                    items: List.generate(51, (index) => 2000 + index)
+                    items: List.generate(maxYear - 1999, (index) => 2000 + index)
                         .map((year) => DropdownMenuItem(
                               value: year,
                               child: Text(year.toString()),
@@ -213,15 +246,17 @@ class HomeController extends BaseController {
                   child: const Text('Cancel'),
                 ),
                 TextButton(
-                  onPressed: () {
-                    if (isFromDate) {
-                      fromDate.value = DateTime(selectedYear, selectedMonth, 1);
-                    } else {
-                      toDate.value = DateTime(selectedYear, selectedMonth, 1);
-                    }
-                    update();
-                    Navigator.pop(context);
-                  },
+                  onPressed: isValidSelection()
+                      ? () {
+                          if (isFromDate) {
+                            fromDate.value = DateTime(selectedYear, selectedMonth, 1);
+                          } else {
+                            toDate.value = DateTime(selectedYear, selectedMonth, 1);
+                          }
+                          update();
+                          Navigator.pop(context);
+                        }
+                      : null, // Disable if selection is invalid
                   child: const Text('OK'),
                 ),
               ],
@@ -243,10 +278,10 @@ class HomeController extends BaseController {
   }
 
   void startStockPriceUpdates() {
+    // Only set up the periodic timer since we already updated prices
     stockUpdateTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       updateCurrentStockPrices();
     });
-    updateCurrentStockPrices();
   }
 
   Future<void> updateCurrentStockPrices() async {
@@ -359,5 +394,41 @@ class HomeController extends BaseController {
 
   String? getUserEmail() {
     return super.getUserEmail();
+  }
+
+  double calculateTotalFee() {
+    int buyDateFeeCount = 0;
+    int sellDateFeeCount = 0;
+    
+    for (var row in stockFormData) {
+      if (row[0] == 'User Email') continue;
+      if (row[0].toString() != getUserEmail()) continue;
+      
+      // Get dates
+      DateTime? buyDate = DateTime.tryParse(row[1].toString());
+      DateTime? sellDate = DateTime.tryParse(row[7].toString());
+      if (buyDate == null) continue;
+      
+      // Convert selected dates to year-month format
+      String fromYearMonth = "${fromDate.value.year}-${fromDate.value.month.toString().padLeft(2, '0')}";
+      String toYearMonth = "${toDate.value.year}-${toDate.value.month.toString().padLeft(2, '0')}";
+      String buyYearMonth = "${buyDate.year}-${buyDate.month.toString().padLeft(2, '0')}";
+      
+      // Check buy date
+      if (buyYearMonth == fromYearMonth || buyYearMonth == toYearMonth) {
+        buyDateFeeCount++;
+      }
+      
+      // Check sell date if it exists
+      if (sellDate != null) {
+        String sellYearMonth = "${sellDate.year}-${sellDate.month.toString().padLeft(2, '0')}";
+        if (sellYearMonth == fromYearMonth || sellYearMonth == toYearMonth) {
+          sellDateFeeCount++;
+        }
+      }
+    }
+    
+    // Calculate total fee (-7 for each count)
+    return -7.0 * (buyDateFeeCount + sellDateFeeCount);
   }
 }
