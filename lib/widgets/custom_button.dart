@@ -15,6 +15,7 @@ class CustomButton extends StatelessWidget {
   final bool isLoading;
   final bool isEnable;
   final FontWeight? fontWeight;
+  final TextAlign? textAlign;
 
   const CustomButton({
     super.key,
@@ -34,6 +35,7 @@ class CustomButton extends StatelessWidget {
     this.isLoading = false,
     this.isEnable = true,
     this.fontWeight,
+    this.textAlign,
   });
 
   @override
@@ -75,6 +77,7 @@ class CustomButton extends StatelessWidget {
                     color: fontColor,
                     fontWeight: fontWeight,
                     fontSize: fontSize ?? 20,
+                    textAlign: textAlign ?? TextAlign.center,
                   ),
                   suffixIcon ?? const SizedBox.shrink(),
                 ],

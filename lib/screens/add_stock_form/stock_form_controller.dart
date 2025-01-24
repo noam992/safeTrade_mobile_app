@@ -15,10 +15,8 @@ class StockFormController extends BaseController {
   final stockSymbol = TextEditingController();
   final buyPrice = TextEditingController();
   final numberOfShares = TextEditingController();
-  final currentSharePrice = TextEditingController();
   final sellDate = TextEditingController();
   final sellPrice = TextEditingController();
-  final profitPercentage = TextEditingController();
 
   Rx<DateTime> date = DateTime.now().obs;
 
@@ -53,7 +51,7 @@ class StockFormController extends BaseController {
         buyPrice.text,
         numberOfShares.text,
         "",
-        currentSharePrice.text.isEmpty ? "-" : currentSharePrice.text,
+        "-",
         sellDate.text.isEmpty ? "-" : sellDate.text,
         sellPrice.text.isEmpty ? "-" : sellPrice.text,
       ];
@@ -90,27 +88,5 @@ class StockFormController extends BaseController {
     } else {
       return null;
     }
-  }
-
-  fetchStockPrice({context}) async {
-    AppUtils.showLoading(context);
-    final url = Uri.parse(
-        'https://alpha-vantage.p.rapidapi.com/query?function=GLOBAL_QUOTE&symbol=${stockSymbol.text}&datatype=json');
-    final response = await http.get(
-      url,
-      headers: {
-        "x-rapidapi-key": "016364ab47msh5cbdc1eca1d2fd9p1a99aajsnffc0409877c7",
-        "x-rapidapi-host": "alpha-vantage.p.rapidapi.com",
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      print(data);
-      currentSharePrice.text = data['Global Quote']["02. open"];
-    } else {
-      throw Exception('Failed to load stock price');
-    }
-    AppUtils.dismissLoading(context);
   }
 }

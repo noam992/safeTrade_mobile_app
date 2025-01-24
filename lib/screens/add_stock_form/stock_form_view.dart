@@ -89,38 +89,12 @@ class StockFormView extends GetView<StockFormController> {
                     ),
                     const SizedBox(height: 16),
                     CustomFormField(
-                      hint: 'Current Share Price',
-                      tec: controller.currentSharePrice,
-                      isLabel: true,
-                      keyboardType: TextInputType.number,
-                      borderColor: AppColors.primaryColor,
-                      errorBorderColor: AppColors.redColor,
-                      readOnly: true,
-                      suffixIcon: IconButton(
-                        onPressed: () async {
-                          if (controller.stockSymbol.text.isNotEmpty) {
-                            await controller.fetchStockPrice(context: context);
-                          } else {
-                            AppUtils.showFailureSnackBar(
-                              context: context,
-                              message: "Please enter the stock symbol!",
-                            );
-                          }
-                        },
-                        icon: AppText(
-                          text: "Get Price",
-                          color: AppColors.blackColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    CustomFormField(
                       hint: 'Sell Date',
                       tec: controller.sellDate,
                       isLabel: true,
                       keyboardType: TextInputType.number,
                       borderColor: AppColors.primaryColor,
-                      errorBorderColor: AppColors.primaryColor,
+                      errorBorderColor: AppColors.redColor,
                       readOnly: true,
                       onFieldOnTap: () async {
                         DateTime? dateTime =
@@ -135,15 +109,6 @@ class StockFormView extends GetView<StockFormController> {
                       hint: 'Sell Price',
                       isLabel: true,
                       tec: controller.sellPrice,
-                      keyboardType: TextInputType.number,
-                      borderColor: AppColors.primaryColor,
-                      errorBorderColor: AppColors.redColor,
-                    ),
-                    const SizedBox(height: 16),
-                    CustomFormField(
-                      hint: 'Profit Percentage',
-                      isLabel: true,
-                      tec: controller.profitPercentage,
                       keyboardType: TextInputType.number,
                       borderColor: AppColors.primaryColor,
                       errorBorderColor: AppColors.redColor,
