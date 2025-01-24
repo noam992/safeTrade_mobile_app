@@ -8,6 +8,7 @@ import 'dart:math';
 
 import '../../widgets/export.dart';
 import 'export.dart';
+import '../../widgets/kpi_cards.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
@@ -56,6 +57,12 @@ class HomeView extends GetView<HomeController> {
                             child: Column(
                               children: [
                                 getDateFilter(context: context),
+                                const SizedBox(height: 16),
+                                KPICards(
+                                  profit: _calculateTotalProfit(controller),
+                                  profitPercentage: _calculateTotalProfitPercentage(controller),
+                                  fee: controller.calculateTotalFee(),
+                                ),
                                 const SizedBox(height: 16),
                                 Expanded(
                                   child: SingleChildScrollView(
@@ -158,11 +165,11 @@ class HomeView extends GetView<HomeController> {
                                                   double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
                                                   double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
                                                   
-                                                  // Calculate days total
+                                                  // Calculate days total (modified to include start day)
                                                   DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
                                                   DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
                                                   DateTime endDate = sellPrice > 0 ? sellDate : DateTime.now();
-                                                  int daysTotal = endDate.difference(buyDate).inDays;
+                                                  int daysTotal = endDate.difference(buyDate).inDays + 1;  // Added +1 to include start day
                                                   
                                                   // Calculate profit and profit percentage
                                                   double profitTotal = portfolioTotal == 0 ? 0 : portfolioTotal - entryTotal;
@@ -314,6 +321,12 @@ class HomeView extends GetView<HomeController> {
                             children: [
                               getDateFilter(context: context),
                               const SizedBox(height: 16),
+                              KPICards(
+                                profit: _calculateTotalProfit(controller),
+                                profitPercentage: _calculateTotalProfitPercentage(controller),
+                                fee: controller.calculateTotalFee(),
+                              ),
+                              const SizedBox(height: 16),
                               Expanded(
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
@@ -415,11 +428,11 @@ class HomeView extends GetView<HomeController> {
                                                 double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
                                                 double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
                                                 
-                                                // Calculate days total
+                                                // Calculate days total (modified to include start day)
                                                 DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
                                                 DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
                                                 DateTime endDate = sellPrice > 0 ? sellDate : DateTime.now();
-                                                int daysTotal = endDate.difference(buyDate).inDays;
+                                                int daysTotal = endDate.difference(buyDate).inDays + 1;  // Added +1 to include start day
                                                 
                                                 // Calculate profit and profit percentage
                                                 double profitTotal = portfolioTotal == 0 ? 0 : portfolioTotal - entryTotal;
@@ -622,22 +635,24 @@ class HomeView extends GetView<HomeController> {
         children: [
           Expanded(
             child: CustomButton(
-              text: 'From: ${_formatMonthYear(controller.fromDate.value)}',
+              text: 'From\n${_formatMonthYear(controller.fromDate.value)}',
               backgroundColor: AppColors.primaryColor,
               fontColor: AppColors.whiteColor,
               isGradient: true,
               fontSize: 14,
+              textAlign: TextAlign.center,
               onTap: () => controller.selectDate(context, true),
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: CustomButton(
-              text: 'To: ${_formatMonthYear(controller.toDate.value)}',
+              text: 'To\n${_formatMonthYear(controller.toDate.value)}',
               backgroundColor: AppColors.primaryColor,
               fontColor: AppColors.whiteColor,
               isGradient: true,
               fontSize: 14,
+              textAlign: TextAlign.center,
               onTap: () => controller.selectDate(context, false),
             ),
           ),
@@ -894,26 +909,109 @@ class HomeView extends GetView<HomeController> {
     required DateTime periodStart,
     required DateTime periodEnd,
   }) {
-    // Check if date range is outside the period
-    if (periodStart.isAfter(endStockPrice) || 
-        periodEnd.isBefore(DateTime(buyDate.year, buyDate.month, 1))) {
+    // If buy date is after period end or end stock price is before period start, 
+    // there's no overlap
+    if (buyDate.isAfter(periodEnd) || endStockPrice.isBefore(periodStart)) {
       return null;
     }
 
-    bool sameEndMonth = endStockPrice.year == periodEnd.year && 
-                       endStockPrice.month == periodEnd.month;
-    bool sameBuyMonth = buyDate.year == periodStart.year && 
-                       buyDate.month == periodStart.month;
-
-    DateTime effectiveStart = sameBuyMonth ? 
-        buyDate : 
-        DateTime(periodStart.year, periodStart.month, 1);
+    // Calculate effective start date (later of buy date and period start)
+    DateTime effectiveStart = buyDate.isAfter(periodStart) ? buyDate : periodStart;
     
-    DateTime effectiveEnd = sameEndMonth ? 
-        endStockPrice : 
-        periodEnd;
+    // Calculate effective end date (earlier of end stock price and period end)
+    DateTime effectiveEnd = endStockPrice.isBefore(periodEnd) ? 
+        endStockPrice : periodEnd;
 
-    return effectiveEnd.difference(effectiveStart).inDays;
+    // Calculate days between effective dates (including start day)
+    return effectiveEnd.difference(effectiveStart).inDays + 1;
+  }
+
+  double _calculateTotalProfit(HomeController controller) {
+    double totalProfit = 0.0;
+    
+    for (var row in controller.stockFormData) {
+      if (row[0] == 'User Email') continue;
+      if (row[0].toString() != controller.getUserEmail()) continue;
+      
+      DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+      DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+      DateTime endStockPrice = sellDate;
+      
+      DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+      DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+      
+      int? daysInPeriod = calculateDaysInPeriod(
+        buyDate: buyDate,
+        endStockPrice: endStockPrice,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+      );
+      
+      if (daysInPeriod != null) {
+        double shares = double.tryParse(row[4].toString()) ?? 0;
+        double buyPrice = double.tryParse(row[3].toString()) ?? 0;
+        String symbol = row[2].toString();
+        double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
+        double entryTotal = shares * buyPrice;
+        double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+        double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
+        double profitTotal = portfolioTotal - entryTotal;
+        int daysTotal = endStockPrice.difference(buyDate).inDays;
+        
+        if (daysTotal > 0) {
+          double profitPerDay = profitTotal / daysTotal;
+          totalProfit += profitPerDay * daysInPeriod;
+        }
+      }
+    }
+    
+    return totalProfit;
+  }
+
+  double _calculateTotalProfitPercentage(HomeController controller) {
+    double totalProfitPercentage = 0.0;
+    int validRecords = 0;
+    
+    for (var row in controller.stockFormData) {
+      if (row[0] == 'User Email') continue;
+      if (row[0].toString() != controller.getUserEmail()) continue;
+      
+      DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
+      DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+      DateTime endStockPrice = sellDate;
+      
+      DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
+      DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
+      
+      int? daysInPeriod = calculateDaysInPeriod(
+        buyDate: buyDate,
+        endStockPrice: endStockPrice,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+      );
+      
+      if (daysInPeriod != null) {
+        double shares = double.tryParse(row[4].toString()) ?? 0;
+        double buyPrice = double.tryParse(row[3].toString()) ?? 0;
+        String symbol = row[2].toString();
+        double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
+        double entryTotal = shares * buyPrice;
+        double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+        double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
+        double profitTotal = portfolioTotal - entryTotal;
+        int daysTotal = endStockPrice.difference(buyDate).inDays;
+        
+        if (daysTotal > 0 && entryTotal > 0) {
+          double profitPerDay = profitTotal / daysTotal;
+          double periodProfit = profitPerDay * daysInPeriod;
+          double periodProfitPercentage = (periodProfit / entryTotal) * 100;
+          totalProfitPercentage += periodProfitPercentage;
+          validRecords++;
+        }
+      }
+    }
+    
+    return validRecords > 0 ? totalProfitPercentage / validRecords : 0;
   }
 }
 
