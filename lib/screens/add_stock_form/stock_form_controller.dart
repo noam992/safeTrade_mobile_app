@@ -51,8 +51,6 @@ class StockFormController extends BaseController {
         stockSymbol.text,
         buyPrice.text,
         numberOfShares.text,
-        "",
-        "-",
         sellDate.text.isEmpty ? "-" : sellDate.text,
         sellPrice.text.isEmpty ? "-" : sellPrice.text,
       ];

@@ -66,4 +66,8 @@ class AppUtils {
       ),
     );
   }
+
+  static String formatDate(DateTime dateTime) {
+    return dateTime.toString().split(' ')[0];  // Returns date in YYYY-MM-DD format
+  }
 }
