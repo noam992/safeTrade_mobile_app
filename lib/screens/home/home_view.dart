@@ -9,6 +9,7 @@ import 'dart:math';
 import '../../widgets/export.dart';
 import 'export.dart';
 import '../../widgets/kpi_cards.dart';
+import '../../screens/update_delete_stock_form/update_delete_stock_form_view.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
@@ -72,7 +73,7 @@ class HomeView extends GetView<HomeController> {
                                     child: SizedBox(
                                       width: max(
                                         MediaQuery.of(context).size.width * 4,
-                                        1800.0, // minimum width to accommodate all columns
+                                        1850.0, // increased minimum width to accommodate new column
                                       ),
                                       child: Column(
                                         children: [
@@ -95,6 +96,7 @@ class HomeView extends GetView<HomeController> {
                                                 _HeaderCell('Profit (total)', flex: 1, width: 120),
                                                 _HeaderCell('% Profit (total)', flex: 1, width: 120),
                                                 _HeaderCell('Days (total)', flex: 1, width: 100),
+                                                _HeaderCell('', flex: 1, width: 50),
                                               ],
                                             ),
                                           ),
@@ -110,7 +112,7 @@ class HomeView extends GetView<HomeController> {
                                                       
                                                       // Calculate all the values first
                                                       DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-                                                      DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                      DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                       DateTime endStockPrice = sellDate;
                                                       
                                                       // Calculate start and end of selected period
@@ -137,7 +139,7 @@ class HomeView extends GetView<HomeController> {
                                                         
                                                         // Calculate all the values first
                                                         DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-                                                        DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                        DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                         DateTime endStockPrice = sellDate;
                                                         
                                                         // Calculate start and end of selected period
@@ -164,12 +166,12 @@ class HomeView extends GetView<HomeController> {
                                                   double entryTotal = shares * buyPrice;
                                                   
                                                   // Calculate portfolio total
-                                                  double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+                                                  double sellPrice = double.tryParse(row[6].toString()) ?? 0.0;
                                                   double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
                                                   
                                                   // Calculate days total (modified to include start day)
                                                   DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-                                                  DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                  DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                   DateTime endDate = sellPrice > 0 ? sellDate : DateTime.now();
                                                   int daysTotal = endDate.difference(buyDate).inDays + 1;  // Added +1 to include start day
                                                   
@@ -234,8 +236,8 @@ class HomeView extends GetView<HomeController> {
                                                       _ContentCell(daysInPeriod?.toString() ?? '', flex: 2, width: 160),
                                                       _ContentCell(row[3].toString(), flex: 1, width: 100),
                                                       _ContentCell(currentPrice.toStringAsFixed(2), flex: 1, width: 120),
-                                                      _ContentCell(row[8].toString(), flex: 1, width: 100),
-                                                      _ContentCell(row[7].toString().split(' ')[0], flex: 1, width: 100),
+                                                      _ContentCell(row[6].toString(), flex: 1, width: 100),
+                                                      _ContentCell(row[5].toString().split(' ')[0], flex: 1, width: 100),
                                                       _ContentCell(row[4].toString(), flex: 1, width: 100),
                                                       _ContentCell(entryTotal.toStringAsFixed(2), flex: 1, width: 120),
                                                       _ContentCell(portfolioTotal.toStringAsFixed(2), flex: 1, width: 120),
@@ -260,6 +262,23 @@ class HomeView extends GetView<HomeController> {
                                                             : null,
                                                       ),
                                                       _ContentCell(daysTotal.toString(), flex: 1, width: 100),
+                                                      _ContentCell(
+                                                        '',
+                                                        flex: 1,
+                                                        width: 50,
+                                                        isEditButton: true,
+                                                        onEditPressed: () {
+                                                          Get.to(
+                                                            () => UpdateDeleteStockFormView(
+                                                              stockData: row,
+                                                              rowIndex: index,
+                                                            ),
+                                                            binding: AppBindings(),
+                                                            transition: Transition.rightToLeft,
+                                                            duration: const Duration(milliseconds: 500),
+                                                          );
+                                                        },
+                                                      ),
                                                     ],
                                                   );
                                                 },
@@ -335,7 +354,7 @@ class HomeView extends GetView<HomeController> {
                                   child: SizedBox(
                                     width: max(
                                       MediaQuery.of(context).size.width * 4,
-                                      1800.0, // minimum width to accommodate all columns
+                                      1850.0, // increased minimum width to accommodate new column
                                     ),
                                     child: Column(
                                       children: [
@@ -358,6 +377,7 @@ class HomeView extends GetView<HomeController> {
                                               _HeaderCell('Profit (total)', flex: 1, width: 120),
                                               _HeaderCell('% Profit (total)', flex: 1, width: 120),
                                               _HeaderCell('Days (total)', flex: 1, width: 100),
+                                              _HeaderCell('', flex: 1, width: 50),
                                             ],
                                           ),
                                         ),
@@ -373,7 +393,7 @@ class HomeView extends GetView<HomeController> {
                                                     
                                                     // Calculate all the values first
                                                     DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-                                                    DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                    DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                     DateTime endStockPrice = sellDate;
                                                     
                                                     // Calculate start and end of selected period
@@ -400,7 +420,7 @@ class HomeView extends GetView<HomeController> {
                                                       
                                                       // Calculate all the values first
                                                       DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-                                                      DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                      DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                       DateTime endStockPrice = sellDate;
                                                       
                                                       // Calculate start and end of selected period
@@ -427,12 +447,12 @@ class HomeView extends GetView<HomeController> {
                                                 double entryTotal = shares * buyPrice;
                                                 
                                                 // Calculate portfolio total
-                                                double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+                                                double sellPrice = double.tryParse(row[6].toString()) ?? 0.0;
                                                 double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
                                                 
                                                 // Calculate days total (modified to include start day)
                                                 DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-                                                DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+                                                DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                 DateTime endDate = sellPrice > 0 ? sellDate : DateTime.now();
                                                 int daysTotal = endDate.difference(buyDate).inDays + 1;  // Added +1 to include start day
                                                 
@@ -497,8 +517,8 @@ class HomeView extends GetView<HomeController> {
                                                     _ContentCell(daysInPeriod?.toString() ?? '', flex: 2, width: 160),
                                                     _ContentCell(row[3].toString(), flex: 1, width: 100),
                                                     _ContentCell(currentPrice.toStringAsFixed(2), flex: 1, width: 120),
-                                                    _ContentCell(row[8].toString(), flex: 1, width: 100),
-                                                    _ContentCell(row[7].toString().split(' ')[0], flex: 1, width: 100),
+                                                    _ContentCell(row[6].toString(), flex: 1, width: 100),
+                                                    _ContentCell(row[5].toString().split(' ')[0], flex: 1, width: 100),
                                                     _ContentCell(row[4].toString(), flex: 1, width: 100),
                                                     _ContentCell(entryTotal.toStringAsFixed(2), flex: 1, width: 120),
                                                     _ContentCell(portfolioTotal.toStringAsFixed(2), flex: 1, width: 120),
@@ -523,6 +543,23 @@ class HomeView extends GetView<HomeController> {
                                                           : null,
                                                     ),
                                                     _ContentCell(daysTotal.toString(), flex: 1, width: 100),
+                                                    _ContentCell(
+                                                      '',
+                                                      flex: 1,
+                                                      width: 50,
+                                                      isEditButton: true,
+                                                      onEditPressed: () {
+                                                        Get.to(
+                                                          () => UpdateDeleteStockFormView(
+                                                            stockData: row,
+                                                            rowIndex: index,
+                                                          ),
+                                                          binding: AppBindings(),
+                                                          transition: Transition.rightToLeft,
+                                                          duration: const Duration(milliseconds: 500),
+                                                        );
+                                                      },
+                                                    ),
                                                   ],
                                                 );
                                               },
@@ -936,7 +973,7 @@ class HomeView extends GetView<HomeController> {
       if (row[0].toString() != controller.getUserEmail()) continue;
       
       DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-      DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+      DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
       DateTime endStockPrice = sellDate;
       
       DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
@@ -955,7 +992,7 @@ class HomeView extends GetView<HomeController> {
         String symbol = row[2].toString();
         double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
         double entryTotal = shares * buyPrice;
-        double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+        double sellPrice = double.tryParse(row[6].toString()) ?? 0.0;
         double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
         double profitTotal = portfolioTotal - entryTotal;
         int daysTotal = endStockPrice.difference(buyDate).inDays;
@@ -979,7 +1016,7 @@ class HomeView extends GetView<HomeController> {
       if (row[0].toString() != controller.getUserEmail()) continue;
       
       DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
-      DateTime sellDate = DateTime.tryParse(row[7].toString()) ?? DateTime.now();
+      DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
       DateTime endStockPrice = sellDate;
       
       DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
@@ -998,7 +1035,7 @@ class HomeView extends GetView<HomeController> {
         String symbol = row[2].toString();
         double currentPrice = controller.currentStockPrices[symbol] ?? 0.0;
         double entryTotal = shares * buyPrice;
-        double sellPrice = double.tryParse(row[8].toString()) ?? 0.0;
+        double sellPrice = double.tryParse(row[6].toString()) ?? 0.0;
         double portfolioTotal = shares * (sellPrice > 0 ? sellPrice : currentPrice);
         double profitTotal = portfolioTotal - entryTotal;
         int daysTotal = endStockPrice.difference(buyDate).inDays;
@@ -1049,15 +1086,33 @@ class _ContentCell extends StatelessWidget {
   final int flex;
   final Color? color;
   final double width;
+  final bool isEditButton;
+  final VoidCallback? onEditPressed;
 
-  const _ContentCell(this.text, {
-    required this.flex, 
+  const _ContentCell(
+    this.text, {
+    required this.flex,
     this.color,
     required this.width,
+    this.isEditButton = false,
+    this.onEditPressed,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (isEditButton) {
+      return Container(
+        width: width,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        alignment: Alignment.center,
+        child: IconButton(
+          icon: const Icon(Icons.edit, size: 20),
+          onPressed: onEditPressed,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+      );
+    }
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
