@@ -406,7 +406,7 @@ class HomeController extends BaseController {
       
       // Get dates
       DateTime? buyDate = DateTime.tryParse(row[1].toString());
-      DateTime? sellDate = DateTime.tryParse(row[7].toString());
+      DateTime? sellDate = DateTime.tryParse(row[5].toString());
       if (buyDate == null) continue;
       
       // Convert selected dates to year-month format
