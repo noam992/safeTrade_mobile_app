@@ -109,6 +109,14 @@ class UpdateDeleteStockFormView extends GetView<UpdateDeleteStockFormController>
                       borderColor: AppColors.primaryColor,
                       errorBorderColor: AppColors.redColor,
                       readOnly: true,
+                      suffixIcon: controller.sellDate.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                controller.sellDate.clear();
+                              },
+                            )
+                          : null,
                       onFieldOnTap: () async {
                         DateTime? dateTime = await controller.selectDate(context);
                         if (dateTime != null) {

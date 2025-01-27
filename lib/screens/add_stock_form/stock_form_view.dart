@@ -50,7 +50,7 @@ class StockFormView extends GetView<StockFormController> {
                         DateTime? dateTime =
                             await controller.selectDate(context);
                         if (dateTime != null) {
-                          controller.buyDate.text = dateTime.toString();
+                          controller.buyDate.text = AppUtils.formatDate(dateTime);
                         }
                       },
                     ),
@@ -100,7 +100,7 @@ class StockFormView extends GetView<StockFormController> {
                         DateTime? dateTime =
                             await controller.selectDate(context);
                         if (dateTime != null) {
-                          controller.sellDate.text = dateTime.toString();
+                          controller.sellDate.text = AppUtils.formatDate(dateTime);
                         }
                       },
                     ),
