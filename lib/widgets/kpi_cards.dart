@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../utils/app_colors.dart';
 
 class KPICards extends StatelessWidget {
@@ -13,6 +14,11 @@ class KPICards extends StatelessWidget {
     required this.fee,
   });
 
+  String formatNumber(double number) {
+    final formatter = NumberFormat('#,##0.0', 'en_US');
+    return '\$${formatter.format(number)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -20,7 +26,7 @@ class KPICards extends StatelessWidget {
         Expanded(
           child: _buildKPICard(
             title: 'Fee',
-            value: fee.toStringAsFixed(2),
+            value: formatNumber(fee),
             color: fee < 0 ? Colors.red.withOpacity(0.1) : AppColors.primaryColor.withOpacity(0.1),
             textColor: fee < 0 ? Colors.red : null,
           ),
@@ -29,7 +35,7 @@ class KPICards extends StatelessWidget {
         Expanded(
           child: _buildKPICard(
             title: 'Profit',
-            value: profit.toStringAsFixed(2),
+            value: formatNumber(profit),
             color: profit >= 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
             textColor: profit >= 0 ? Colors.green : Colors.red,
           ),
@@ -38,7 +44,7 @@ class KPICards extends StatelessWidget {
         Expanded(
           child: _buildKPICard(
             title: '% Profit',
-            value: '${profitPercentage.toStringAsFixed(2)}%',
+            value: '${NumberFormat('#,##0.0').format(profitPercentage)}%',
             color: profitPercentage >= 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
             textColor: profitPercentage >= 0 ? Colors.green : Colors.red,
           ),

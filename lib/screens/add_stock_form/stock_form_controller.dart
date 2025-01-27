@@ -44,21 +44,27 @@ class StockFormController extends BaseController {
       );
       final rows = response.values ?? [];
 
+      // Format dates and ensure no quotes are added
+      final formattedBuyDate = buyDate.text.split(' ')[0].replaceAll("'", ""); // Remove any quotes
+      final formattedSellDate = sellDate.text.isNotEmpty 
+          ? sellDate.text.split(' ')[0].replaceAll("'", "") 
+          : '';
+
       ///Add new user data
       final newRow = [
         getUserEmail(),
-        buyDate.text,
+        formattedBuyDate,
         stockSymbol.text,
         buyPrice.text,
         numberOfShares.text,
-        sellDate.text.isEmpty ? "-" : sellDate.text,
+        formattedSellDate.isEmpty ? "-" : formattedSellDate,
         sellPrice.text.isEmpty ? "-" : sellPrice.text,
       ];
       await sheetsApi.spreadsheets.values.append(
         ValueRange(values: [newRow]),
         spreadsheetId,
         range,
-        valueInputOption: 'RAW',
+        valueInputOption: 'USER_ENTERED',
       );
       isLoading.value = false;
       client.close();

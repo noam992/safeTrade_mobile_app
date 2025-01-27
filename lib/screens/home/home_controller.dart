@@ -286,16 +286,20 @@ class HomeController extends BaseController {
 
   Future<void> updateCurrentStockPrices() async {
     try {
-      if (stockFormData.isEmpty) {
-        debugPrint('No stock form data available');
+      // Filter for valid rows first
+      final validRows = stockFormData.where((row) => 
+        row.isNotEmpty && 
+        row[0] != 'User Email' && 
+        row[0].toString() == getUserEmail() &&
+        row[2].toString().isNotEmpty
+      ).toList();
+
+      if (validRows.isEmpty) {
+        debugPrint('No valid stock form data available');
         return;
       }
 
-      final symbols = stockFormData
-          .where((row) => 
-              row.isNotEmpty && 
-              row[0].toString() == getUserEmail() &&
-              row[2].toString().isNotEmpty)
+      final symbols = validRows
           .map((row) => row[2].toString())
           .toSet();
 
@@ -400,10 +404,14 @@ class HomeController extends BaseController {
     int buyDateFeeCount = 0;
     int sellDateFeeCount = 0;
     
-    for (var row in stockFormData) {
-      if (row[0] == 'User Email') continue;
-      if (row[0].toString() != getUserEmail()) continue;
-      
+    // Filter valid rows first
+    var validRows = stockFormData.where((row) => 
+      row.isNotEmpty && 
+      row[0] != 'User Email' && 
+      row[0].toString() == getUserEmail()
+    ).toList();
+    
+    for (var row in validRows) {
       // Get dates
       DateTime? buyDate = DateTime.tryParse(row[1].toString());
       DateTime? sellDate = DateTime.tryParse(row[5].toString());
@@ -428,7 +436,6 @@ class HomeController extends BaseController {
       }
     }
     
-    // Calculate total fee (-7 for each count)
     return -7.0 * (buyDateFeeCount + sellDateFeeCount);
   }
 }

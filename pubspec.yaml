@@ -43,6 +43,7 @@ dependencies:
   #for password encrypt
   crypto: ^3.0.6
   flutter_dotenv: ^5.1.0
+  intl: ^0.18.0
 
 
 

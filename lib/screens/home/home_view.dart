@@ -5,6 +5,7 @@ import 'package:safe_trade/core/service/cache_manager.dart';
 import 'package:safe_trade/screens/add_stock_form/export.dart';
 import 'package:safe_trade/utils/app_colors.dart';
 import 'dart:math';
+import 'package:intl/intl.dart';
 
 import '../../widgets/export.dart';
 import 'export.dart';
@@ -106,20 +107,21 @@ class HomeView extends GetView<HomeController> {
                                                 shrinkWrap: true,
                                                 physics: const NeverScrollableScrollPhysics(),
                                                 itemCount: controller.stockFormData
+                                                    .where((row) => 
+                                                      row.isNotEmpty && 
+                                                      row[0] != 'User Email' && 
+                                                      row[0].toString() == controller.getUserEmail()
+                                                    )
+                                                    .toList()
                                                     .where((row) {
-                                                      if (row[0] == 'User Email') return false;
-                                                      if (row[0].toString() != controller.getUserEmail()) return false;
-                                                      
-                                                      // Calculate all the values first
+                                                      // Calculate if the record has days in the selected period
                                                       DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
                                                       DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                       DateTime endStockPrice = sellDate;
                                                       
-                                                      // Calculate start and end of selected period
                                                       DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
                                                       DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
                                                       
-                                                      // Calculate days in period
                                                       int? daysInPeriod = calculateDaysInPeriod(
                                                         buyDate: buyDate,
                                                         endStockPrice: endStockPrice,
@@ -127,26 +129,26 @@ class HomeView extends GetView<HomeController> {
                                                         periodEnd: periodEnd,
                                                       );
                                                       
-                                                      // Include rows where days in period is not null (including 0)
-                                                      return daysInPeriod != null;
+                                                      return daysInPeriod != null && daysInPeriod > 0;
                                                     })
                                                     .length,
                                                 itemBuilder: (context, index) {
-                                                  final row = controller.stockFormData
+                                                  final validRows = controller.stockFormData
+                                                      .where((row) => 
+                                                        row.isNotEmpty && 
+                                                        row[0] != 'User Email' && 
+                                                        row[0].toString() == controller.getUserEmail()
+                                                      )
+                                                      .toList()
                                                       .where((row) {
-                                                        if (row[0] == 'User Email') return false;
-                                                        if (row[0].toString() != controller.getUserEmail()) return false;
-                                                        
-                                                        // Calculate all the values first
+                                                        // Calculate if the record has days in the selected period
                                                         DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
                                                         DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                         DateTime endStockPrice = sellDate;
                                                         
-                                                        // Calculate start and end of selected period
                                                         DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
                                                         DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
                                                         
-                                                        // Calculate days in period
                                                         int? daysInPeriod = calculateDaysInPeriod(
                                                           buyDate: buyDate,
                                                           endStockPrice: endStockPrice,
@@ -154,10 +156,21 @@ class HomeView extends GetView<HomeController> {
                                                           periodEnd: periodEnd,
                                                         );
                                                         
-                                                        // Include rows where days in period is not null (including 0)
-                                                        return daysInPeriod != null;
+                                                        return daysInPeriod != null && daysInPeriod > 0;
                                                       })
-                                                      .toList()[index];
+                                                      .toList();
+                                                  
+                                                  final row = validRows[index];
+                                                  
+                                                  // Store the original index for update/delete operations
+                                                  final originalIndex = controller.stockFormData
+                                                      .where((row) => 
+                                                        row.isNotEmpty && 
+                                                        row[0] != 'User Email' && 
+                                                        row[0].toString() == controller.getUserEmail()
+                                                      )
+                                                      .toList()
+                                                      .indexOf(row);
                                                   
                                                   double shares = double.tryParse(row[4].toString()) ?? 0;
                                                   double buyPrice = double.tryParse(row[3].toString()) ?? 0;
@@ -212,7 +225,7 @@ class HomeView extends GetView<HomeController> {
                                                       _ContentCell(row[1].toString().split(' ')[0], flex: 1, width: 100),
                                                       _ContentCell(symbol, flex: 1, width: 100),
                                                       _ContentCell(
-                                                        profitSelectedPeriod?.toStringAsFixed(2) ?? '',
+                                                        profitSelectedPeriod != null ? formatNumber(profitSelectedPeriod) : '',
                                                         flex: 2,
                                                         width: 160,
                                                         color: (profitSelectedPeriod ?? 0) > 0 
@@ -234,15 +247,21 @@ class HomeView extends GetView<HomeController> {
                                                             : null,
                                                       ),
                                                       _ContentCell(daysInPeriod?.toString() ?? '', flex: 2, width: 160),
-                                                      _ContentCell(row[3].toString(), flex: 1, width: 100),
-                                                      _ContentCell(currentPrice.toStringAsFixed(2), flex: 1, width: 120),
-                                                      _ContentCell(row[6].toString(), flex: 1, width: 100),
+                                                      _ContentCell('\$ ${row[3].toString()}', flex: 1, width: 100),
+                                                      _ContentCell('\$ ${currentPrice.toStringAsFixed(2)}', flex: 1, width: 120),
+                                                      _ContentCell(
+                                                        row[6].toString().isNotEmpty && row[6].toString() != '-' 
+                                                          ? '\$ ${row[6].toString()}' 
+                                                          : row[6].toString(),
+                                                        flex: 1,
+                                                        width: 100
+                                                      ),
                                                       _ContentCell(row[5].toString().split(' ')[0], flex: 1, width: 100),
                                                       _ContentCell(row[4].toString(), flex: 1, width: 100),
-                                                      _ContentCell(entryTotal.toStringAsFixed(2), flex: 1, width: 120),
-                                                      _ContentCell(portfolioTotal.toStringAsFixed(2), flex: 1, width: 120),
+                                                      _ContentCell('\$${NumberFormat('#,##0.00').format(entryTotal)}', flex: 1, width: 120),
+                                                      _ContentCell('\$${NumberFormat('#,##0.00').format(portfolioTotal)}', flex: 1, width: 120),
                                                       _ContentCell(
-                                                        profitTotal.toStringAsFixed(2),
+                                                        formatNumber(profitTotal),
                                                         flex: 1,
                                                         width: 120,
                                                         color: profitTotal > 0 
@@ -271,7 +290,7 @@ class HomeView extends GetView<HomeController> {
                                                           Get.to(
                                                             () => UpdateDeleteStockFormView(
                                                               stockData: row,
-                                                              rowIndex: index,
+                                                              rowIndex: originalIndex,  // Use the original index here
                                                             ),
                                                             binding: AppBindings(),
                                                             transition: Transition.rightToLeft,
@@ -387,20 +406,21 @@ class HomeView extends GetView<HomeController> {
                                               shrinkWrap: true,
                                               physics: const NeverScrollableScrollPhysics(),
                                               itemCount: controller.stockFormData
+                                                  .where((row) => 
+                                                    row.isNotEmpty && 
+                                                    row[0] != 'User Email' && 
+                                                    row[0].toString() == controller.getUserEmail()
+                                                  )
+                                                  .toList()
                                                   .where((row) {
-                                                    if (row[0] == 'User Email') return false;
-                                                    if (row[0].toString() != controller.getUserEmail()) return false;
-                                                    
-                                                    // Calculate all the values first
+                                                    // Calculate if the record has days in the selected period
                                                     DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
                                                     DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                     DateTime endStockPrice = sellDate;
                                                     
-                                                    // Calculate start and end of selected period
                                                     DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
                                                     DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
                                                     
-                                                    // Calculate days in period
                                                     int? daysInPeriod = calculateDaysInPeriod(
                                                       buyDate: buyDate,
                                                       endStockPrice: endStockPrice,
@@ -408,26 +428,26 @@ class HomeView extends GetView<HomeController> {
                                                       periodEnd: periodEnd,
                                                     );
                                                     
-                                                    // Include rows where days in period is not null (including 0)
-                                                    return daysInPeriod != null;
+                                                    return daysInPeriod != null && daysInPeriod > 0;
                                                   })
                                                   .length,
                                               itemBuilder: (context, index) {
-                                                final row = controller.stockFormData
+                                                final validRows = controller.stockFormData
+                                                    .where((row) => 
+                                                      row.isNotEmpty && 
+                                                      row[0] != 'User Email' && 
+                                                      row[0].toString() == controller.getUserEmail()
+                                                    )
+                                                    .toList()
                                                     .where((row) {
-                                                      if (row[0] == 'User Email') return false;
-                                                      if (row[0].toString() != controller.getUserEmail()) return false;
-                                                      
-                                                      // Calculate all the values first
+                                                      // Calculate if the record has days in the selected period
                                                       DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
                                                       DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
                                                       DateTime endStockPrice = sellDate;
                                                       
-                                                      // Calculate start and end of selected period
                                                       DateTime periodStart = DateTime(controller.fromDate.value.year, controller.fromDate.value.month, 1);
                                                       DateTime periodEnd = DateTime(controller.toDate.value.year, controller.toDate.value.month + 1, 0);
                                                       
-                                                      // Calculate days in period
                                                       int? daysInPeriod = calculateDaysInPeriod(
                                                         buyDate: buyDate,
                                                         endStockPrice: endStockPrice,
@@ -435,11 +455,22 @@ class HomeView extends GetView<HomeController> {
                                                         periodEnd: periodEnd,
                                                       );
                                                       
-                                                      // Include rows where days in period is not null (including 0)
-                                                      return daysInPeriod != null;
+                                                      return daysInPeriod != null && daysInPeriod > 0;
                                                     })
-                                                    .toList()[index];
+                                                    .toList();
                                                 
+                                                final row = validRows[index];
+                                                
+                                                // Store the original index for update/delete operations
+                                                final originalIndex = controller.stockFormData
+                                                    .where((row) => 
+                                                      row.isNotEmpty && 
+                                                      row[0] != 'User Email' && 
+                                                      row[0].toString() == controller.getUserEmail()
+                                                    )
+                                                    .toList()
+                                                    .indexOf(row);
+
                                                 double shares = double.tryParse(row[4].toString()) ?? 0;
                                                 double buyPrice = double.tryParse(row[3].toString()) ?? 0;
                                                 String symbol = row[2].toString();
@@ -493,7 +524,7 @@ class HomeView extends GetView<HomeController> {
                                                     _ContentCell(row[1].toString().split(' ')[0], flex: 1, width: 100),
                                                     _ContentCell(symbol, flex: 1, width: 100),
                                                     _ContentCell(
-                                                      profitSelectedPeriod?.toStringAsFixed(2) ?? '',
+                                                      profitSelectedPeriod != null ? formatNumber(profitSelectedPeriod) : '',
                                                       flex: 2,
                                                       width: 160,
                                                       color: (profitSelectedPeriod ?? 0) > 0 
@@ -515,15 +546,21 @@ class HomeView extends GetView<HomeController> {
                                                           : null,
                                                     ),
                                                     _ContentCell(daysInPeriod?.toString() ?? '', flex: 2, width: 160),
-                                                    _ContentCell(row[3].toString(), flex: 1, width: 100),
-                                                    _ContentCell(currentPrice.toStringAsFixed(2), flex: 1, width: 120),
-                                                    _ContentCell(row[6].toString(), flex: 1, width: 100),
+                                                    _ContentCell('\$${row[3].toString()}', flex: 1, width: 100),
+                                                    _ContentCell('\$${currentPrice.toStringAsFixed(2)}', flex: 1, width: 120),
+                                                    _ContentCell(
+                                                      row[6].toString().isNotEmpty && row[6].toString() != '-' 
+                                                        ? '\$${row[6].toString()}' 
+                                                        : row[6].toString(),
+                                                      flex: 1,
+                                                      width: 100
+                                                    ),
                                                     _ContentCell(row[5].toString().split(' ')[0], flex: 1, width: 100),
                                                     _ContentCell(row[4].toString(), flex: 1, width: 100),
-                                                    _ContentCell(entryTotal.toStringAsFixed(2), flex: 1, width: 120),
-                                                    _ContentCell(portfolioTotal.toStringAsFixed(2), flex: 1, width: 120),
+                                                    _ContentCell('\$${NumberFormat('#,##0.00').format(entryTotal)}', flex: 1, width: 120),
+                                                    _ContentCell('\$${NumberFormat('#,##0.00').format(portfolioTotal)}', flex: 1, width: 120),
                                                     _ContentCell(
-                                                      profitTotal.toStringAsFixed(2),
+                                                      formatNumber(profitTotal),
                                                       flex: 1,
                                                       width: 120,
                                                       color: profitTotal > 0 
@@ -552,7 +589,7 @@ class HomeView extends GetView<HomeController> {
                                                         Get.to(
                                                           () => UpdateDeleteStockFormView(
                                                             stockData: row,
-                                                            rowIndex: index,
+                                                            rowIndex: originalIndex,  // Use the original index here
                                                           ),
                                                           binding: AppBindings(),
                                                           transition: Transition.rightToLeft,
@@ -968,10 +1005,14 @@ class HomeView extends GetView<HomeController> {
   double _calculateTotalProfit(HomeController controller) {
     double totalProfit = 0.0;
     
-    for (var row in controller.stockFormData) {
-      if (row[0] == 'User Email') continue;
-      if (row[0].toString() != controller.getUserEmail()) continue;
-      
+    // Filter valid rows first
+    var validRows = controller.stockFormData.where((row) => 
+      row.isNotEmpty && 
+      row[0] != 'User Email' && 
+      row[0].toString() == controller.getUserEmail()
+    ).toList();
+    
+    for (var row in validRows) {
       DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
       DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
       DateTime endStockPrice = sellDate;
@@ -1011,10 +1052,14 @@ class HomeView extends GetView<HomeController> {
     double totalProfitPercentage = 0.0;
     int validRecords = 0;
     
-    for (var row in controller.stockFormData) {
-      if (row[0] == 'User Email') continue;
-      if (row[0].toString() != controller.getUserEmail()) continue;
-      
+    // Filter valid rows first
+    var validRows = controller.stockFormData.where((row) => 
+      row.isNotEmpty && 
+      row[0] != 'User Email' && 
+      row[0].toString() == controller.getUserEmail()
+    ).toList();
+    
+    for (var row in validRows) {
       DateTime buyDate = DateTime.tryParse(row[1].toString()) ?? DateTime.now();
       DateTime sellDate = DateTime.tryParse(row[5].toString()) ?? DateTime.now();
       DateTime endStockPrice = sellDate;
@@ -1129,4 +1174,9 @@ class _ContentCell extends StatelessWidget {
       ),
     );
   }
+}
+
+String formatNumber(double number) {
+  final formatter = NumberFormat('#,##0.0', 'en_US');  // Changed to one decimal place
+  return '${number >= 0 ? '' : '-'}\$${formatter.format(number.abs())}';
 }
